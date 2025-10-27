@@ -511,6 +511,107 @@ st.plotly_chart(fig_pos, use_container_width=True, config={"responsive": True})
 
 st.divider()
 
+# ============================================================
+# 📊 통합 장애 통계 시각화 (2x2 세로 막대 그래프)
+# - 981Park Premium UI Style 적용
+# ============================================================
+
+st.subheader("📈 통합 장애 통계 요약")
+
+# ✅ CSV 다시 로드
+try:
+    raw_stats = pd.read_csv(url_stats, header=None, dtype=str)
+except Exception as e:
+    st.error(f"❌ 장애통계 시트 로드 실패: {e}")
+    st.stop()
+
+# ✅ 데이터 블록 추출 함수
+
+
+def extract_block(df, start, end):
+    """주어진 행 범위(A열~B열)에서 통계 블록 추출"""
+    block = df.iloc[start:end, :2].dropna(how="all")
+    block.columns = ["항목", "건수"]
+    block = block.dropna(subset=["항목"])
+    block["건수"] = pd.to_numeric(
+        block["건수"], errors="coerce").fillna(0).astype(int)
+    return block
+
+
+# ✅ 통계 블록 4개
+block_gubun = extract_block(raw_stats, 25, 30)     # 🧩 세부기기별 통계
+block_type = extract_block(raw_stats, 33, 38)      # 🚨 장애유형별 통계
+block_gun = extract_block(raw_stats, 41, 44)       # 🔫 총기 모델별 고장 횟수
+block_keyword = extract_block(raw_stats, 47, 56)   # 🛠 서바이벌 키워드별 장애 횟수
+
+# ✅ Plotly 공통 색상 팔레트 (981Park Signature Tone)
+color_seq = ["#4e79a7", "#59a14f", "#f28e2b", "#e15759", "#76b7b2", "#edc948"]
+
+# ✅ 그래프 스타일 공통 함수
+
+
+def render_bar(df_block, title, container):
+    fig = px.bar(
+        df_block,
+        x="항목",
+        y="건수",
+        text="건수",
+        color="항목",
+        color_discrete_sequence=color_seq,
+        title=title,
+    )
+    fig.update_traces(
+        textfont_size=12,
+        textposition="outside",
+        marker_line_width=0,
+        width=0.55,
+    )
+    fig.update_layout(
+        height=400,
+        plot_bgcolor="rgba(255,255,255,0)",
+        paper_bgcolor="rgba(255,255,255,0)",
+        font=dict(color="#334155", size=13, family="Pretendard, Noto Sans KR"),
+        margin=dict(l=40, r=20, t=60, b=40),
+        transition=dict(duration=500, easing="cubic-in-out"),
+        title=dict(
+            font=dict(size=18, color="#233142",
+                      family="Pretendard, Noto Sans KR", weight="bold"),  # ✅ 수정
+            x=0.5, xanchor="center"
+        ),
+        showlegend=False
+    )
+
+    container.plotly_chart(fig, use_container_width=True,
+                           config={"responsive": True})
+
+
+# ✅ 2행 × 2열 레이아웃 구성
+row1_col1, row1_col2 = st.columns(2)
+row2_col1, row2_col2 = st.columns(2)
+
+render_bar(block_gubun, "🧩 세부기기별 통계", row1_col1)
+render_bar(block_type, "🚨 장애유형별 통계", row1_col2)
+render_bar(block_gun, "🔫 총기 모델별 고장 횟수", row2_col1)
+render_bar(block_keyword, "🛠 서바이벌 키워드별 장애 횟수", row2_col2)
+
+# ✅ 그래프 카드 스타일 (981Park Dashboard Tone)
+st.markdown("""
+<style>
+div[data-testid="stPlotlyChart"] {
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(245,247,250,0.95));
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+  padding: 16px;
+  transition: all .35s ease-in-out;
+}
+div[data-testid="stPlotlyChart"]:hover {
+  transform: scale(1.005);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.12);
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.divider()
 
 # ========== 조치 필요 리스트 ==========
 st.subheader("🧾 조치 필요 목록 (미조치/점검중)")
