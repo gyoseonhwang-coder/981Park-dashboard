@@ -8,6 +8,20 @@ import requests
 import io
 import re
 
+import streamlit as st
+from streamlit.web.server.websocket_headers import _get_websocket_headers
+import os
+
+# Streamlit Refresh API
+if "request" in st.context:
+    req = st.context["request"]
+    if req.method == "POST" and req.path == "/api/reload":
+        token = req.headers.get("Authorization")
+        if token == f"Bearer {st.secrets['API_REFRESH_TOKEN']}":
+            st.experimental_rerun()
+        else:
+            st.error("❌ Unauthorized Access")
+
 # ─────────────────────────────────────────────────────────
 # 981파크 장애관리 실시간 대시보드 (프리미엄 UX)
 #  - 필터 UI 간소화(상단 expander)
