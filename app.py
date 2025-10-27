@@ -322,23 +322,87 @@ render_kpi([
 
 st.divider()
 
-# ========== 월별 장애 접수 추이 ==========
-st.subheader("📈 월별 장애 접수 추이")
-if not df_f.empty:
-    monthly = (
-        df_f.groupby("월", as_index=False)["상태"]
-        .count()
-        .rename(columns={"상태": "건수"})
-    )
-    # 결측 월을 0으로 채워 전체 월이 나오게
-    month_df = pd.DataFrame({"월": all_month_labels})
-    monthly = month_df.merge(monthly, on="월", how="left").fillna({"건수": 0})
-    monthly["건수"] = monthly["건수"].astype(int)
+# ========== 월별 장애 접수 및 완료율 추이 (프리미엄 버전) ==========
+st.subheader("📊 월별 장애 접수 및 완료율 추이")
 
-    fig_month = px.line(monthly, x="월", y="건수", markers=True, title="월별 접수 추이")
-    st.plotly_chart(fig_month, use_container_width=True)
+if not df_f.empty:
+    # 상태별 집계
+    monthly_stats = (
+        df_f.groupby("월")["상태"]
+        .value_counts()
+        .unstack(fill_value=0)
+        .reindex(columns=["미조치(접수중)", "점검중", "완료"], fill_value=0)
+    )
+
+    # 전체/완료율 계산
+    monthly_stats["전체건수"] = monthly_stats.sum(axis=1)
+    monthly_stats["완료율(%)"] = (
+        monthly_stats["완료"] / monthly_stats["전체건수"] * 100
+    ).round(1)
+
+    import plotly.graph_objects as go
+
+    fig = go.Figure()
+
+    # 전체 건수 (좌측축)
+    fig.add_trace(go.Scatter(
+        x=monthly_stats.index,
+        y=monthly_stats["전체건수"],
+        mode="lines+markers+text",
+        name="전체 건수",
+        line=dict(color="#4e79a7", width=3),
+        marker=dict(size=8, color="#4e79a7"),
+        text=monthly_stats["전체건수"],
+        textposition="top center"
+    ))
+
+    # 완료율 (우측축)
+    fig.add_trace(go.Scatter(
+        x=monthly_stats.index,
+        y=monthly_stats["완료율(%)"],
+        mode="lines+markers+text",
+        name="완료율(%)",
+        yaxis="y2",
+        line=dict(color="#2b8a3e", width=2, dash="dot"),
+        marker=dict(size=8, color="#2b8a3e"),
+        text=monthly_stats["완료율(%)"].astype(str) + "%",
+        textposition="bottom center"
+    ))
+
+    # 레이아웃 설정
+    fig.update_layout(
+        height=650,
+        title=dict(
+            text="📈 월별 장애 접수 및 완료율 추이",
+            font=dict(size=20, color="#233142",
+                      family="Pretendard, Noto Sans KR", weight="bold"),
+            x=0.5, xanchor="center"
+        ),
+        xaxis=dict(title="월", tickfont=dict(size=13)),
+        yaxis=dict(title="접수 건수", showgrid=True,
+                   gridcolor="rgba(200,200,200,0.2)"),
+        yaxis2=dict(
+            title="완료율(%)",
+            overlaying="y",
+            side="right",
+            showgrid=False,
+            range=[0, 110],
+            tickfont=dict(size=13)
+        ),
+        plot_bgcolor="rgba(255,255,255,0)",
+        paper_bgcolor="rgba(255,255,255,0)",
+        font=dict(color="#334155", size=13),
+        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"),
+        margin=dict(l=60, r=60, t=80, b=60),
+        transition=dict(duration=700, easing="cubic-in-out"),
+    )
+
+    # 그래프 렌더링
+    st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
+
 else:
     st.info("선택한 필터에 해당하는 데이터가 없습니다.")
+
 
 st.divider()
 
