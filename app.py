@@ -9,25 +9,22 @@ import io
 import re
 from menu_ui import render_menu, read_nav_target
 
+import streamlit as st
+from menu_ui import render_menu, read_nav_target
+
 st.set_page_config(
     page_title="🚀 981Park Dashboard",
     layout="wide",
     initial_sidebar_state="collapsed"
 )
 
-# 🔹 커스텀 메뉴 렌더링 (최상단)
+# 햄버거 메뉴
 render_menu(active="Dashboard")
 
-# 🔹 네비게이션 판별
+# 네비게이션
 target = read_nav_target(default="Dashboard")
 if target == "IssueForm":
     st.switch_page("pages/01_issueform.py")
-
-if target == "IssueForm":
-    try:
-        st.switch_page("01_issueform.py")
-    except Exception:
-        st.page_link("01_issueform.py", label="🧾 장애 접수로 이동", icon="🧾")
 
 KST = ZoneInfo("Asia/Seoul")
 
