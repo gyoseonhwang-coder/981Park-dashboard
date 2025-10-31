@@ -9,14 +9,19 @@ import io
 import re
 from menu_ui import render_menu, read_nav_target
 
-st.set_page_config(page_title="🚀 981Park Dashboard", layout="wide")
+st.set_page_config(
+    page_title="🚀 981Park Dashboard",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
+# 커스텀 햄버거 메뉴 렌더링
 render_menu(active="Dashboard")
 
 target = read_nav_target(default="Dashboard")
 if target == "IssueForm":
-    st.switch_page("pages/01_issueform.py")  # 🔥 정확한 경로 명시
-    
+    st.switch_page("pages/01_issueform.py")
+
 st.set_page_config(page_title="981Park Dashboard", layout="wide")
 
 render_menu(active="Dashboard")

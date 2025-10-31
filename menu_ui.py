@@ -1,75 +1,83 @@
 import streamlit as st
 
 # ─────────────────────────────────────────────
-# Streamlit 기본 사이드바 비활성화 (햄버거 메뉴만 사용)
+# Streamlit 기본 사이드바 탐색 메뉴 비활성화
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-/* 기본 사이드바 탐색 메뉴 숨기기 */
-[data-testid="stSidebarNav"] {display: none !important;}
-[data-testid="stSidebarNav"] + div {display: none !important;}
-section[data-testid="stSidebar"] {width: 0; min-width: 0;}
+/* 기본 탐색 메뉴 숨기기 */
+[data-testid="stSidebarNav"] {display:none !important;}
+[data-testid="stSidebarNav"] + div {display:none !important;}
+section[data-testid="stSidebar"] {width:0 !important; min-width:0 !important; overflow:hidden !important;}
 </style>
 """, unsafe_allow_html=True)
 
-
 # ─────────────────────────────────────────────
-# 햄버거 메뉴 + 사이드 메뉴 구성
+# 커스텀 햄버거 메뉴 렌더러
 # ─────────────────────────────────────────────
 def render_menu(active: str = "Dashboard"):
-    """햄버거 메뉴 렌더링 (Dashboard / IssueForm 전환)"""
+    """좌측 상단 햄버거 + 메뉴창 렌더링"""
     if "menu_open" not in st.session_state:
         st.session_state.menu_open = False
-    if "current_page" not in st.session_state:
-        st.session_state.current_page = active
 
-    # CSS
+    # ✅ CSS : 버튼과 패널을 Streamlit 상위 레이어에 고정
     st.markdown("""
     <style>
-    #menu-btn {
-        font-size: 26px;
-        cursor: pointer;
+    #custom-menu-btn {
         position: fixed;
-        top: 18px;
-        left: 25px;
-        z-index: 9999;
-        color: #2c7be5;
+        top: 16px;
+        left: 18px;
+        z-index: 99999;
         background: none;
         border: none;
+        color: #2c7be5;
+        font-size: 26px;
+        cursor: pointer;
     }
-    .sidebar-panel {
+    .custom-sidebar {
         position: fixed;
-        top: 0; left: 0;
-        width: 240px; height: 100%;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        width: 240px;
         background: linear-gradient(180deg, #1e293b, #334155);
-        color: white;
+        color: #fff;
         padding: 70px 20px 20px 20px;
+        box-shadow: 3px 0 10px rgba(0,0,0,0.3);
+        border-right: 1px solid rgba(255,255,255,0.1);
         transform: translateX(-260px);
-        transition: transform 0.35s ease-in-out;
-        z-index: 9998;
-        box-shadow: 2px 0 10px rgba(0,0,0,0.3);
+        transition: transform 0.35s ease;
+        z-index: 99998;
     }
-    .sidebar-panel.open { transform: translateX(0); }
+    .custom-sidebar.open {
+        transform: translateX(0);
+    }
     .menu-item {
         font-size: 17px;
-        margin: 14px 0;
-        padding: 10px 16px;
+        padding: 10px 14px;
         border-radius: 8px;
+        margin: 8px 0;
         cursor: pointer;
-        transition: all 0.25s ease;
+        transition: all 0.25s;
     }
-    .menu-item:hover { background: rgba(255,255,255,0.15); }
-    .menu-active { background: rgba(255,255,255,0.25); font-weight: bold; }
+    .menu-item:hover {
+        background: rgba(255,255,255,0.15);
+    }
+    .menu-active {
+        background: rgba(255,255,255,0.25);
+        font-weight: bold;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-    # JS
+    # ✅ JS : 메뉴 토글 및 페이지 이동
     st.markdown("""
     <script>
     function toggleMenu() {
-        const panel = window.parent.document.querySelector('.sidebar-panel');
-        if (!panel) return;
-        panel.classList.toggle('open');
+        const panel = window.parent.document.querySelector('.custom-sidebar');
+        if (panel) {
+            panel.classList.toggle('open');
+        }
     }
     function navSelect(target) {
         const url = new URL(window.location);
@@ -80,13 +88,10 @@ def render_menu(active: str = "Dashboard"):
     </script>
     """, unsafe_allow_html=True)
 
-    # 햄버거 버튼
-    st.markdown('<button id="menu-btn" onclick="toggleMenu()">☰</button>',
-                unsafe_allow_html=True)
-
-    # 메뉴 패널
+    # ✅ 버튼과 패널 삽입
     menu_html = f"""
-    <div class="sidebar-panel {'open' if st.session_state.menu_open else ''}">
+    <button id="custom-menu-btn" onclick="toggleMenu()">☰</button>
+    <div class="custom-sidebar {'open' if st.session_state.menu_open else ''}">
         <div class="menu-item {'menu-active' if active == 'Dashboard' else ''}" 
              onclick="navSelect('Dashboard')">📊 Dashboard</div>
         <div class="menu-item {'menu-active' if active == 'IssueForm' else ''}" 
@@ -97,13 +102,16 @@ def render_menu(active: str = "Dashboard"):
 
 
 # ─────────────────────────────────────────────
-# 현재 페이지 네비게이션 판별
+# 네비게이션 상태 관리
 # ─────────────────────────────────────────────
 def read_nav_target(default: str = "Dashboard") -> str:
     """현재 nav 파라미터 읽기"""
-    nav = st.query_params.get("nav") if hasattr(st, "query_params") else None
-    if isinstance(nav, list):
-        nav = nav[0]
-    if nav in ("Dashboard", "IssueForm"):
-        return nav
-    return default
+    try:
+        nav = st.query_params.get("nav") if hasattr(st, "query_params") else None
+        if isinstance(nav, list):
+            nav = nav[0]
+        if nav in ("Dashboard", "IssueForm"):
+            return nav
+        return default
+    except Exception:
+        return default
