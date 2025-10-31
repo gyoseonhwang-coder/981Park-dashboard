@@ -7,22 +7,24 @@ from zoneinfo import ZoneInfo
 import requests
 import io
 import re
+from menu_ui import render_menu, read_nav_target
 
-# ─────────────────────────────────────────────────────────
-# 981파크 장애관리 실시간 대시보드 (프리미엄 UX)
-#  - 필터 UI 간소화(상단 expander)
-#  - 금일/전체 KPI 대형 카드
-#  - 월별 전체 추이(결측 월 포함)
-#  - 월별 포지션/위치별 상태 분포(완료/점검중/미조치)
-# ─────────────────────────────────────────────────────────
+st.set_page_config(page_title="981Park Dashboard", layout="wide")
 
-st.set_page_config(page_title="981파크 장애관리 실시간 대시보드", layout="wide")
+render_menu(active="Dashboard")
+
+target: str = "Dashboard"
+target = read_nav_target(default="Dashboard")
+
+if target == "IssueForm":
+    try:
+        st.switch_page("01_issueform.py")
+    except Exception:
+        st.page_link("01_issueform.py", label="🧾 장애 접수로 이동", icon="🧾")
+
 KST = ZoneInfo("Asia/Seoul")
 
-# 접수내용 시트 (접수내용 gid)
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
-
-# ========== 유틸 ==========
 
 
 def fetch_csv(url: str) -> pd.DataFrame:
@@ -55,10 +57,10 @@ def parse_jeju_date(val):
     s = re.sub(r"-+", "-", s).strip("-")
 
     patterns = [
-        "%Y-%m-%d %p %I:%M:%S",  # 2025-10-20 PM 3:05:39
-        "%Y-%m-%d %H:%M:%S",     # 2025-10-20 15:05:39
-        "%Y-%m-%d",              # 2025-10-20
-        "%y-%m-%d",              # 25-10-20
+        "%Y-%m-%d %p %I:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+        "%Y-%m-%d",
+        "%y-%m-%d",
     ]
     for fmt in patterns:
         try:
@@ -66,7 +68,6 @@ def parse_jeju_date(val):
         except Exception:
             continue
 
-    # 엑셀 시리얼
     if re.fullmatch(r"\d+(\.\d+)?", s):
         try:
             return pd.to_datetime(float(s), unit="D", origin="1899-12-30")
@@ -137,14 +138,12 @@ def render_kpi(cards, columns=5):
         )
 
 
-# ========== 데이터 로드 ==========
 try:
     df = fetch_csv(SHEET_URL)
 except Exception as e:
     st.error(f"❌ 접수내용 로드 실패: {e}")
     st.stop()
 
-# 컬럼 정규화
 rename_map = {
     "우선순위": "우선순위",
     "날짜": "날짜",
@@ -163,7 +162,7 @@ rename_map = {
     "장애관리": "장애관리",
     "소요시간": "소요시간",
     "종결": "종결",
-    "상태": "접수처리",  # 혹시 '상태'로 올 때
+    "상태": "접수처리",
 }
 norm_cols = {c: c.replace("\n", "").strip() for c in df.columns}
 df.rename(columns=norm_cols, inplace=True)
@@ -178,17 +177,14 @@ if missing:
     st.error(f"❌ 접수내용 필수 컬럼 누락: {', '.join(missing)}")
     st.stop()
 
-# 날짜/상태 전처리
 df["날짜"] = df["날짜"].apply(parse_jeju_date)
 if "완료일자" in df.columns:
     df["완료일자"] = df["완료일자"].apply(parse_jeju_date)
 df["상태"] = df["접수처리"].apply(normalize_status)
 df = df.dropna(subset=["날짜"]).copy()
 
-# 월 라벨
 df["월"] = df["날짜"].apply(month_label)
 
-# 월 전체 범위(결측 월 포함) 만들기
 if not df.empty:
     min_month = df["날짜"].min().to_period("M")
     max_month = df["날짜"].max().to_period("M")
@@ -197,11 +193,9 @@ if not df.empty:
 else:
     all_month_labels = []
 
-# ========== 헤더 ==========
 st.title("🚀 981파크 장애관리 실시간 대시보드")
 st.caption("접수내용 실시간 연동 (30초 자동 갱신) — 포지션/위치별 상태 분포까지")
 
-# 🔽🔽 여기에 추가 🔽🔽
 st.markdown(
     """
     <div style="margin-top:15px; margin-bottom:30px;">
@@ -224,19 +218,12 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-# 🔼🔼 여기에 추가 🔼🔼
-
-# ========== KPI: 전체 현황 ==========
-
-# ========== 필터(상단 expander, 기본 접힘) ==========
 with st.expander("필터 열기 / 닫기", expanded=False):
     st.write("원하는 범위를 선택하면 KPI/그래프가 즉시 재계산됩니다.")
 
-    # 월 선택: 기본 = 데이터의 전체 월
     sel_months = st.multiselect(
         "📆 월 선택", all_month_labels, default=all_month_labels)
 
-    # 포지션/위치/상태
     all_positions = sorted(df["포지션"].dropna().astype(str).unique())
     sel_positions = st.multiselect(
         "📍 포지션 선택", all_positions, default=all_positions)
@@ -249,7 +236,6 @@ with st.expander("필터 열기 / 닫기", expanded=False):
     sel_status = st.multiselect(
         "⏱ 상태 선택", status_options, default=status_options)
 
-# 필터 적용
 mask = (
     df["월"].isin(sel_months if sel_months else all_month_labels) &
     df["포지션"].astype(str).isin(sel_positions if sel_positions else all_positions) &
@@ -258,7 +244,6 @@ mask = (
 )
 df_f = df.loc[mask].copy()
 
-# ========== KPI: 전체 현황 ==========
 total, prog, pend, done, rate = status_counts(df_f)
 
 st.subheader("📊 전체 장애 접수 현황")
@@ -272,29 +257,23 @@ render_kpi([
 
 st.divider()
 
-# ========== KPI: 월별 현황 (KST 기준) ==========
 st.subheader("📅 월별 장애 접수 현황")
 
-# 현재 월 구하기 (Windows/Linux 모두 호환)
 now_dt = datetime.now(tz=KST)
 try:
-    current_month = now_dt.strftime("%Y년 %-m월")  # Unix/Linux
+    current_month = now_dt.strftime("%Y년 %-m월")
 except ValueError:
-    current_month = now_dt.strftime("%Y년 %#m월")  # Windows fallback
+    current_month = now_dt.strftime("%Y년 %#m월")
 
-# 사용 가능한 월 목록
 available_months = sorted(df["월"].unique())
 
-# 기본 선택
 default_month = current_month if current_month in available_months else available_months[-1]
 selected_month = st.selectbox(
     "📆 조회할 월 선택", available_months, index=available_months.index(default_month))
 
-# 선택 월 필터
 df_month = df[df["월"] == selected_month]
 m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
 
-# KPI 카드 렌더링
 render_kpi([
     (f"{selected_month} 전체 접수", f"{m_total}", "c-blue"),
     ("점검중", f"{m_prog}", "c-orange"),
@@ -305,8 +284,6 @@ render_kpi([
 
 st.divider()
 
-
-# ========== KPI: 금일 현황 (KST, 접수일 기준) ==========
 today_kst = datetime.now(tz=KST).date()
 df_today = df[df["날짜"].dt.date == today_kst]
 t_total, t_prog, t_pend, t_done, t_rate = status_counts(df_today)
@@ -322,11 +299,9 @@ render_kpi([
 
 st.divider()
 
-# ========== 월별 장애 접수 및 완료율 추이 (프리미엄 버전) ==========
 st.subheader("📊 월별 장애 접수 및 완료율 추이")
 
 if not df_f.empty:
-    # 상태별 집계
     monthly_stats = (
         df_f.groupby("월")["상태"]
         .value_counts()
@@ -334,7 +309,6 @@ if not df_f.empty:
         .reindex(columns=["미조치(접수중)", "점검중", "완료"], fill_value=0)
     )
 
-    # 전체/완료율 계산
     monthly_stats["전체건수"] = monthly_stats.sum(axis=1)
     monthly_stats["완료율(%)"] = (
         monthly_stats["완료"] / monthly_stats["전체건수"] * 100
@@ -344,7 +318,6 @@ if not df_f.empty:
 
     fig = go.Figure()
 
-    # 전체 건수 (좌측축)
     fig.add_trace(go.Scatter(
         x=monthly_stats.index,
         y=monthly_stats["전체건수"],
@@ -356,7 +329,6 @@ if not df_f.empty:
         textposition="top center"
     ))
 
-    # 완료율 (우측축)
     fig.add_trace(go.Scatter(
         x=monthly_stats.index,
         y=monthly_stats["완료율(%)"],
@@ -369,7 +341,6 @@ if not df_f.empty:
         textposition="bottom center"
     ))
 
-    # 레이아웃 설정
     fig.update_layout(
         height=650,
         title=dict(
@@ -397,7 +368,6 @@ if not df_f.empty:
         transition=dict(duration=700, easing="cubic-in-out"),
     )
 
-    # 그래프 렌더링
     st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
 
 else:
@@ -406,7 +376,6 @@ else:
 
 st.divider()
 
-# ========== 포지션별 장애 상태 분포 (UX 업그레이드, 애니메이션 제거 버전) ==========
 st.subheader("📍 포지션별 장애 상태 분포")
 
 try:
@@ -504,13 +473,11 @@ df_long = df_long.merge(
 )
 df_long = df_long.sort_values("총건수", ascending=True)
 
-# 🎨 색상 / 스타일 설정 (고급스러운 톤)
 color_map = {
-    "조치완료": "rgba(78,121,167,0.9)",  # muted blue
-    "미조치": "rgba(225,87,89,0.9)",    # muted red
+    "조치완료": "rgba(78,121,167,0.9)",
+    "미조치": "rgba(225,87,89,0.9)",
 }
 
-# 📊 그래프 생성 (애니메이션 제거, 부드러운 트랜지션만)
 fig_pos = px.bar(
     df_long,
     x="건수",
@@ -523,7 +490,6 @@ fig_pos = px.bar(
     title=f"📊 {selected_month} 기준 포지션별 장애 상태 분포",
 )
 
-# 총 건수 라벨
 totals = df_m[["포지션", "전체접수"]].rename(columns={"전체접수": "총건수"})
 for _, r in totals.iterrows():
     fig_pos.add_annotation(
@@ -534,7 +500,6 @@ for _, r in totals.iterrows():
         font=dict(color="#1e293b", size=12),
     )
 
-# 시각 효과 / 레이아웃
 fig_pos.update_traces(
     textfont_size=12,
     textposition="inside",
@@ -553,7 +518,6 @@ fig_pos.update_layout(
     margin=dict(l=60, r=40, t=80, b=40),
 )
 
-# 고급스러운 카드 스타일
 st.markdown("""
 <style>
 div[data-testid="stPlotlyChart"] {
@@ -570,15 +534,9 @@ div[data-testid="stPlotlyChart"]:hover {
 </style>
 """, unsafe_allow_html=True)
 
-# ✅ Streamlit 최신 권장 방식 적용 (경고 제거)
 st.plotly_chart(fig_pos, use_container_width=True, config={"responsive": True})
 
 st.divider()
-
-# ============================================================
-# 📊 통합 장애 통계 시각화 (2x2 세로 막대 그래프)
-# - 981Park Premium UI Style 적용
-# ============================================================
 
 st.subheader("📈 통합 장애 통계 요약")
 
@@ -588,8 +546,6 @@ try:
 except Exception as e:
     st.error(f"❌ 장애통계 시트 로드 실패: {e}")
     st.stop()
-
-# ✅ 데이터 블록 추출 함수
 
 
 def extract_block(df, start, end):
@@ -602,16 +558,12 @@ def extract_block(df, start, end):
     return block
 
 
-# ✅ 통계 블록 4개
-block_gubun = extract_block(raw_stats, 25, 30)     # 🧩 세부기기별 통계
-block_type = extract_block(raw_stats, 33, 38)      # 🚨 장애유형별 통계
-block_gun = extract_block(raw_stats, 41, 44)       # 🔫 총기 모델별 고장 횟수
-block_keyword = extract_block(raw_stats, 47, 56)   # 🛠 서바이벌 키워드별 장애 횟수
+block_gubun = extract_block(raw_stats, 25, 30)
+block_type = extract_block(raw_stats, 33, 38)
+block_gun = extract_block(raw_stats, 41, 44)
+block_keyword = extract_block(raw_stats, 47, 56)
 
-# ✅ Plotly 공통 색상 팔레트 (981Park Signature Tone)
 color_seq = ["#4e79a7", "#59a14f", "#f28e2b", "#e15759", "#76b7b2", "#edc948"]
-
-# ✅ 그래프 스타일 공통 함수
 
 
 def render_bar(df_block, title, container):
@@ -649,7 +601,6 @@ def render_bar(df_block, title, container):
                            config={"responsive": True})
 
 
-# ✅ 2행 × 2열 레이아웃 구성
 row1_col1, row1_col2 = st.columns(2)
 row2_col1, row2_col2 = st.columns(2)
 
@@ -658,7 +609,6 @@ render_bar(block_type, "🚨 장애유형별 통계", row1_col2)
 render_bar(block_gun, "🔫 총기 모델별 고장 횟수", row2_col1)
 render_bar(block_keyword, "🛠 서바이벌 키워드별 장애 횟수", row2_col2)
 
-# ✅ 그래프 카드 스타일 (981Park Dashboard Tone)
 st.markdown("""
 <style>
 div[data-testid="stPlotlyChart"] {
@@ -677,7 +627,6 @@ div[data-testid="stPlotlyChart"]:hover {
 
 st.divider()
 
-# ========== 조치 필요 리스트 ==========
 st.subheader("🧾 조치 필요 목록 (미조치/점검중)")
 pending = df_f[df_f["상태"].isin(["미조치(접수중)", "점검중"])]
 cols_show = [c for c in ["날짜", "포지션", "위치", "설비명",
