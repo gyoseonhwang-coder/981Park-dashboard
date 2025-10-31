@@ -1,15 +1,29 @@
-# menu_ui.py
 import streamlit as st
 
+# ─────────────────────────────────────────────
+# Streamlit 기본 사이드바 비활성화 (햄버거 메뉴만 사용)
+# ─────────────────────────────────────────────
+st.markdown("""
+<style>
+/* 기본 사이드바 탐색 메뉴 숨기기 */
+[data-testid="stSidebarNav"] {display: none !important;}
+[data-testid="stSidebarNav"] + div {display: none !important;}
+section[data-testid="stSidebar"] {width: 0; min-width: 0;}
+</style>
+""", unsafe_allow_html=True)
 
+
+# ─────────────────────────────────────────────
+# 햄버거 메뉴 + 사이드 메뉴 구성
+# ─────────────────────────────────────────────
 def render_menu(active: str = "Dashboard"):
-    """왼쪽 햄버거 메뉴 + 사이드 메뉴 렌더"""
+    """햄버거 메뉴 렌더링 (Dashboard / IssueForm 전환)"""
     if "menu_open" not in st.session_state:
         st.session_state.menu_open = False
     if "current_page" not in st.session_state:
-        st.session_state.current_page = "Dashboard"
+        st.session_state.current_page = active
 
-    # CSS 스타일
+    # CSS
     st.markdown("""
     <style>
     #menu-btn {
@@ -49,7 +63,7 @@ def render_menu(active: str = "Dashboard"):
     </style>
     """, unsafe_allow_html=True)
 
-    # JS (메뉴 토글 및 페이지 이동)
+    # JS
     st.markdown("""
     <script>
     function toggleMenu() {
@@ -70,20 +84,23 @@ def render_menu(active: str = "Dashboard"):
     st.markdown('<button id="menu-btn" onclick="toggleMenu()">☰</button>',
                 unsafe_allow_html=True)
 
-    # 사이드 메뉴 패널
+    # 메뉴 패널
     menu_html = f"""
     <div class="sidebar-panel {'open' if st.session_state.menu_open else ''}">
-      <div class="menu-item {'menu-active' if active == 'Dashboard' else ''}"
-           onclick="navSelect('Dashboard')">📊 Dashboard</div>
-      <div class="menu-item {'menu-active' if active == 'IssueForm' else ''}"
-           onclick="navSelect('IssueForm')">🧾 장애 접수</div>
+        <div class="menu-item {'menu-active' if active == 'Dashboard' else ''}" 
+             onclick="navSelect('Dashboard')">📊 Dashboard</div>
+        <div class="menu-item {'menu-active' if active == 'IssueForm' else ''}" 
+             onclick="navSelect('IssueForm')">🧾 장애 접수</div>
     </div>
     """
     st.markdown(menu_html, unsafe_allow_html=True)
 
 
+# ─────────────────────────────────────────────
+# 현재 페이지 네비게이션 판별
+# ─────────────────────────────────────────────
 def read_nav_target(default: str = "Dashboard") -> str:
-    """URL query string에서 nav 파라미터 읽기"""
+    """현재 nav 파라미터 읽기"""
     nav = st.query_params.get("nav") if hasattr(st, "query_params") else None
     if isinstance(nav, list):
         nav = nav[0]

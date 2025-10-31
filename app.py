@@ -9,6 +9,14 @@ import io
 import re
 from menu_ui import render_menu, read_nav_target
 
+st.set_page_config(page_title="🚀 981Park Dashboard", layout="wide")
+
+render_menu(active="Dashboard")
+
+target = read_nav_target(default="Dashboard")
+if target == "IssueForm":
+    st.switch_page("pages/01_issueform.py")  # 🔥 정확한 경로 명시
+    
 st.set_page_config(page_title="981Park Dashboard", layout="wide")
 
 render_menu(active="Dashboard")
@@ -195,29 +203,6 @@ else:
 
 st.title("🚀 981파크 장애관리 실시간 대시보드")
 st.caption("접수내용 실시간 연동 (30초 자동 갱신) — 포지션/위치별 상태 분포까지")
-
-st.markdown(
-    """
-    <div style="margin-top:15px; margin-bottom:30px;">
-        <a href="https://script.google.com/macros/s/AKfycbz7MQhBdNYdinX6eU4gIltsQCnM-nmpYclbVt90rCJP4QNp42kp0aWa33iTtFpd4svK/exec" 
-           target="_blank" 
-           style="
-                display:inline-block;
-                background:#2c7be5;
-                color:white;
-                padding:16px 30px;
-                border-radius:12px;
-                text-decoration:none;
-                font-weight:700;
-                font-size:20px;
-                box-shadow:0 4px 12px rgba(0,0,0,0.15);
-                transition:all 0.25s ease-in-out;">
-            📩 장애 접수 바로가기
-        </a>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 with st.expander("필터 열기 / 닫기", expanded=False):
     st.write("원하는 범위를 선택하면 KPI/그래프가 즉시 재계산됩니다.")
 
