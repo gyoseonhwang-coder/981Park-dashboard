@@ -15,19 +15,13 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# 커스텀 햄버거 메뉴 렌더링
+# 🔹 커스텀 메뉴 렌더링 (최상단)
 render_menu(active="Dashboard")
 
+# 🔹 네비게이션 판별
 target = read_nav_target(default="Dashboard")
 if target == "IssueForm":
     st.switch_page("pages/01_issueform.py")
-
-st.set_page_config(page_title="981Park Dashboard", layout="wide")
-
-render_menu(active="Dashboard")
-
-target: str = "Dashboard"
-target = read_nav_target(default="Dashboard")
 
 if target == "IssueForm":
     try:

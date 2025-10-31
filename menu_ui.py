@@ -1,39 +1,46 @@
 import streamlit as st
 
 # ─────────────────────────────────────────────
-# Streamlit 기본 사이드바 탐색 메뉴 비활성화
+# Streamlit 기본 사이드바 숨김
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
-/* 기본 탐색 메뉴 숨기기 */
-[data-testid="stSidebarNav"] {display:none !important;}
-[data-testid="stSidebarNav"] + div {display:none !important;}
-section[data-testid="stSidebar"] {width:0 !important; min-width:0 !important; overflow:hidden !important;}
+[data-testid="stSidebarNav"], [data-testid="stSidebarNav"] + div {
+  display:none !important;
+}
+section[data-testid="stSidebar"] {
+  width:0 !important; min-width:0 !important; overflow:hidden !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
+
 # ─────────────────────────────────────────────
-# 커스텀 햄버거 메뉴 렌더러
+# 커스텀 햄버거 메뉴
 # ─────────────────────────────────────────────
 def render_menu(active: str = "Dashboard"):
-    """좌측 상단 햄버거 + 메뉴창 렌더링"""
-    if "menu_open" not in st.session_state:
-        st.session_state.menu_open = False
-
-    # ✅ CSS : 버튼과 패널을 Streamlit 상위 레이어에 고정
+    """좌측 상단 햄버거 메뉴 + 네비게이션"""
     st.markdown("""
     <style>
+    /* 🔹 페이지 전체 상단 여백 제거 */
+    div.block-container {
+        padding-top: 0rem !important;
+    }
+
+    /* 🔹 햄버거 버튼 */
     #custom-menu-btn {
         position: fixed;
-        top: 16px;
+        top: 12px;
         left: 18px;
-        z-index: 99999;
+        z-index: 10001;
         background: none;
         border: none;
-        color: #2c7be5;
+        color: #2563eb;
         font-size: 26px;
         cursor: pointer;
     }
+
+    /* 🔹 메뉴 패널 */
     .custom-sidebar {
         position: fixed;
         top: 0;
@@ -43,15 +50,15 @@ def render_menu(active: str = "Dashboard"):
         background: linear-gradient(180deg, #1e293b, #334155);
         color: #fff;
         padding: 70px 20px 20px 20px;
-        box-shadow: 3px 0 10px rgba(0,0,0,0.3);
-        border-right: 1px solid rgba(255,255,255,0.1);
         transform: translateX(-260px);
         transition: transform 0.35s ease;
-        z-index: 99998;
+        box-shadow: 3px 0 10px rgba(0,0,0,0.3);
+        z-index: 10000;
+        border-right: 1px solid rgba(255,255,255,0.1);
     }
-    .custom-sidebar.open {
-        transform: translateX(0);
-    }
+    .custom-sidebar.open { transform: translateX(0); }
+
+    /* 🔹 메뉴 아이템 */
     .menu-item {
         font-size: 17px;
         padding: 10px 14px;
@@ -60,23 +67,31 @@ def render_menu(active: str = "Dashboard"):
         cursor: pointer;
         transition: all 0.25s;
     }
-    .menu-item:hover {
-        background: rgba(255,255,255,0.15);
+    .menu-item:hover { background: rgba(255,255,255,0.15); }
+    .menu-active { background: rgba(255,255,255,0.25); font-weight: bold; }
+
+    /* 🔹 오버레이 영역 */
+    .overlay {
+        position: fixed;
+        top: 0; left: 0;
+        width: 100vw; height: 100vh;
+        background: rgba(0,0,0,0.3);
+        z-index: 9999;
+        display: none;
     }
-    .menu-active {
-        background: rgba(255,255,255,0.25);
-        font-weight: bold;
-    }
+    .overlay.show { display: block; }
     </style>
     """, unsafe_allow_html=True)
 
-    # ✅ JS : 메뉴 토글 및 페이지 이동
+    # JavaScript
     st.markdown("""
     <script>
     function toggleMenu() {
-        const panel = window.parent.document.querySelector('.custom-sidebar');
-        if (panel) {
-            panel.classList.toggle('open');
+        const sidebar = window.parent.document.querySelector('.custom-sidebar');
+        const overlay = window.parent.document.querySelector('.overlay');
+        if (sidebar && overlay) {
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('show');
         }
     }
     function navSelect(target) {
@@ -88,24 +103,24 @@ def render_menu(active: str = "Dashboard"):
     </script>
     """, unsafe_allow_html=True)
 
-    # ✅ 버튼과 패널 삽입
+    # HTML 버튼 + 메뉴 삽입
     menu_html = f"""
+    <div class="overlay" onclick="toggleMenu()"></div>
     <button id="custom-menu-btn" onclick="toggleMenu()">☰</button>
-    <div class="custom-sidebar {'open' if st.session_state.menu_open else ''}">
+    <div class="custom-sidebar">
         <div class="menu-item {'menu-active' if active == 'Dashboard' else ''}" 
-             onclick="navSelect('Dashboard')">📊 Dashboard</div>
+             onclick="navSelect('Dashboard'); toggleMenu()">📊 Dashboard</div>
         <div class="menu-item {'menu-active' if active == 'IssueForm' else ''}" 
-             onclick="navSelect('IssueForm')">🧾 장애 접수</div>
+             onclick="navSelect('IssueForm'); toggleMenu()">🧾 장애 접수</div>
     </div>
     """
     st.markdown(menu_html, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────
-# 네비게이션 상태 관리
+# 네비게이션 판별
 # ─────────────────────────────────────────────
 def read_nav_target(default: str = "Dashboard") -> str:
-    """현재 nav 파라미터 읽기"""
     try:
         nav = st.query_params.get("nav") if hasattr(st, "query_params") else None
         if isinstance(nav, list):
