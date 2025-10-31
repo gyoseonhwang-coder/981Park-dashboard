@@ -7,24 +7,17 @@ from zoneinfo import ZoneInfo
 import requests
 import io
 import re
-from menu_ui import render_menu, read_nav_target
 
-import streamlit as st
-from menu_ui import render_menu, read_nav_target
+from menu_ui import render_sidebar
 
 st.set_page_config(
     page_title="🚀 981Park Dashboard",
     layout="wide",
-    initial_sidebar_state="collapsed"
+    initial_sidebar_state="expanded"  # ✅ 사이드바 항상 펼침
 )
 
-# 햄버거 메뉴
-render_menu(active="Dashboard")
-
-# 네비게이션
-target = read_nav_target(default="Dashboard")
-if target == "IssueForm":
-    st.switch_page("pages/01_issueform.py")
+# ✅ 왼쪽 고정 사이드바 렌더
+render_sidebar(active="Dashboard")
 
 KST = ZoneInfo("Asia/Seoul")
 

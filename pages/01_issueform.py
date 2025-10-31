@@ -4,6 +4,11 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import time
+from menu_ui import render_sidebar
+
+st.set_page_config(page_title="🧾 981Park 장애 접수",
+                   layout="wide", initial_sidebar_state="expanded")
+render_sidebar(active="IssueForm")  # ✅ 왼쪽 고정 메뉴
 
 # ────────────────────────────────────────────────
 # Google Sheets 설정
