@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 def render_menu(active: str = "Dashboard"):
     """981파크 커스텀 햄버거 메뉴"""
 
@@ -102,13 +103,14 @@ def render_menu(active: str = "Dashboard"):
     """
 
     # ⛳ HTML을 실제 페이지 최상단에 렌더링
-    st.html(html_code, height=0)
+    st.html(html_code)
 
 
 def read_nav_target(default: str = "Dashboard") -> str:
     """현재 nav 파라미터 읽기"""
     try:
-        nav = st.query_params.get("nav") if hasattr(st, "query_params") else None
+        nav = st.query_params.get("nav") if hasattr(
+            st, "query_params") else None
         if isinstance(nav, list):
             nav = nav[0]
         if nav in ("Dashboard", "IssueForm"):
