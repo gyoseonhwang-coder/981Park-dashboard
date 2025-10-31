@@ -1,5 +1,6 @@
 import streamlit as st
 
+
 def render_sidebar(active: str = "Dashboard"):
     """
     항상 열려있는 왼쪽 사이드바에
@@ -23,7 +24,8 @@ def render_sidebar(active: str = "Dashboard"):
     st.sidebar.markdown("### 🧭 Navigation")
     # Streamlit 1.50: page_link 지원
     st.sidebar.page_link("app.py", label="📊 Dashboard", icon=":bar_chart:")
-    st.sidebar.page_link("pages/01_issueform.py", label="🧾 장애 접수", icon=":memo:")
+    st.sidebar.page_link("pages/01_issueform.py",
+                         label="🧾 장애 접수", icon=":memo:")
 
     # 선택 상태 표시(하이라이트 느낌)
     if active == "Dashboard":
