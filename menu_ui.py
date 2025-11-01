@@ -1,32 +1,33 @@
 import streamlit as st
-import os
-
+import sys
 
 def render_sidebar(active: str = "Dashboard"):
-    """로컬 + Cloud 환경 자동 감지 사이드바"""
+    """981Park Streamlit 사이드바 - Cloud/로컬 자동 감지"""
+
     with st.sidebar:
         st.markdown("## 📍 메뉴")
 
-        # 📊 Dashboard 이동
+        # Dashboard 이동
         if st.button("📊 Dashboard", use_container_width=True):
             try:
-                if os.environ.get("STREAMLIT_RUNTIME"):  # Cloud 환경
+                # ✅ Cloud에서는 app.py 대신 "Home"
+                if "mount/src" in sys.path[0]:
                     st.switch_page("Home")
-                else:  # 로컬
+                else:
                     st.switch_page("app.py")
-            except Exception as e:
-                st.error(f"⚠️ 이동 실패 (Dashboard): {e}")
+            except Exception:
+                st.page_link("Home", label="📊 Dashboard")
 
-        # 🧾 장애 접수 이동
+        # 장애 접수 이동
         if st.button("🧾 장애 접수", use_container_width=True):
             try:
-                if os.environ.get("STREAMLIT_RUNTIME"):  # Cloud 환경
-                    # ✅ Cloud에서는 이렇게 등록되어 있음
+                # ✅ Cloud에서는 이렇게 등록됨
+                if "mount/src" in sys.path[0]:
                     st.switch_page("pages/01_issueform")
-                else:  # 로컬 실행 시
+                else:
                     st.switch_page("pages/01_issueform.py")
-            except Exception as e:
-                st.error(f"⚠️ 이동 실패 (IssueForm): {e}")
+            except Exception:
+                st.page_link("pages/01_issueform.py", label="🧾 장애 접수")
 
         st.markdown("---")
         st.caption("© 2025 981Park Technical Support Team")
