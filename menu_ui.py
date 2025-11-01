@@ -2,12 +2,17 @@ import streamlit as st
 import sys
 import os
 
+import streamlit as st
+import sys
+import os
+
+# ✅ Cloud/로컬 페이지 리스트 확인 (rerun 없이)
 try:
     from streamlit.source_util import get_pages
     pages = get_pages("")
     st.sidebar.write("🔍 Available pages:", list(pages.keys()))
 except Exception as e:
-    st.sidebar.write("⚠️ 페이지 목록 확인 실패:", e)
+    st.sidebar.write("⚠️ 페이지 목록 확인 실패:", str(e))
 
 
 def render_sidebar(active: str = "Dashboard"):
