@@ -1,30 +1,27 @@
 import streamlit as st
 
-# ─────────────────────────────────────────────
-# ✅ 기본 Streamlit Navigation 패널 숨기기
-# ─────────────────────────────────────────────
-st.markdown("""
-<style>
-/* 기본 Pages 탐색 메뉴 숨기기 */
-[data-testid="stSidebarNav"] {display: none !important;}
-section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
-/* 상단 여백 최소화 */
-[data-testid="stSidebar"] {padding-top: 0px !important;}
-</style>
-""", unsafe_allow_html=True)
 
-# ─────────────────────────────────────────────
-# ✅ 커스텀 사이드바 메뉴
-# ─────────────────────────────────────────────
 def render_sidebar(active: str = "Dashboard"):
-    """981Park 전용 사이드바"""
+    """왼쪽 사이드바 렌더링"""
     with st.sidebar:
-        st.markdown("### 🚀 981Park")
-        st.markdown("---")
+        st.markdown(
+            "<h2 style='color:#2c7be5; margin-bottom:20px;'>📋 981Park</h2>",
+            unsafe_allow_html=True,
+        )
 
-        # 메뉴 항목
-        st.page_link("app.py", label="📊 Dashboard")
-        st.page_link("pages/01_issueform.py", label="🧾 장애 접수")
+        # Dashboard 버튼
+        if st.button("📊 Dashboard", use_container_width=True):
+            st.switch_page("app.py")
+
+        # 장애 접수 버튼
+        if st.button("🧾 장애 접수", use_container_width=True):
+            st.switch_page("pages/01_issueform.py")
 
         st.markdown("---")
-        st.caption("981Park Technical Support © 2025")
+        st.caption("© 2025 981Park Dashboard")
+
+        # 현재 활성 페이지 강조 (텍스트 표시)
+        st.markdown(
+            f"<p style='color:gray; font-size:14px;'>현재 페이지: <b>{active}</b></p>",
+            unsafe_allow_html=True
+        )
