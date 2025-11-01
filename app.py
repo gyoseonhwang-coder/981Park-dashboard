@@ -1,3 +1,4 @@
+from menu_ui import render_sidebar
 import csv
 import streamlit as st
 import pandas as pd
@@ -8,21 +9,17 @@ import requests
 import io
 import re
 
-from menu_ui import render_sidebar
+st.markdown(
+    "<style>[data-testid='stSidebarNav'] {display: none !important;}</style>", unsafe_allow_html=True)
 
-st.set_page_config(
-    page_title="🚀 981Park Dashboard",
-    layout="wide",
-    initial_sidebar_state="expanded"  # ✅ 사이드바 항상 펼침
-)
+st.set_page_config(page_title="981Park Dashboard", layout="wide")
 
-# ✅ 왼쪽 고정 사이드바 렌더
+# ✅ 항상 왼쪽 메뉴 표시
 render_sidebar(active="Dashboard")
 
 KST = ZoneInfo("Asia/Seoul")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
-
 
 def fetch_csv(url: str) -> pd.DataFrame:
     """Google Sheets CSV를 안전하게 로드(HTML 응답/구분자/인코딩 보정)"""
@@ -38,7 +35,6 @@ def fetch_csv(url: str) -> pd.DataFrame:
     df.columns = df.columns.str.replace("\n", "", regex=False).str.strip()
     df = df.loc[:, ~df.columns.str.contains(r"^Unnamed", na=False)]
     return df
-
 
 def parse_jeju_date(val):
     """
