@@ -2,26 +2,35 @@ import streamlit as st
 
 
 def render_sidebar(active: str = "Dashboard"):
-    """왼쪽 사이드바 렌더링"""
+    """왼쪽 고정 사이드 메뉴 (Cloud 호환형)"""
+
     with st.sidebar:
-        st.markdown(
-            "<h2 style='color:#2c7be5; margin-bottom:20px;'>📋 981Park</h2>",
-            unsafe_allow_html=True,
-        )
+        st.markdown("## 📍 메뉴")
 
-        # Dashboard 버튼
+        # Dashboard 이동 버튼
         if st.button("📊 Dashboard", use_container_width=True):
-            st.switch_page("app.py")
+            try:
+                st.switch_page("app.py")  # 로컬 환경
+            except Exception:
+                st.switch_page("Home")     # Streamlit Cloud 경로 fallback
 
-        # 장애 접수 버튼
+        # 장애 접수 이동 버튼
         if st.button("🧾 장애 접수", use_container_width=True):
-            st.switch_page("pages/01_issueform.py")
+            try:
+                st.switch_page("pages/01_issueform.py")  # 로컬 환경
+            except Exception:
+                # Streamlit Cloud fallback
+                st.switch_page("IssueForm")
 
         st.markdown("---")
-        st.caption("© 2025 981Park Dashboard")
+        st.caption("© 2025 981Park Technical Support Team")
 
-        # 현재 활성 페이지 강조 (텍스트 표시)
-        st.markdown(
-            f"<p style='color:gray; font-size:14px;'>현재 페이지: <b>{active}</b></p>",
-            unsafe_allow_html=True
-        )
+
+def read_nav_target(default: str = "Dashboard") -> str:
+    """URL query string에서 nav 파라미터 읽기"""
+    nav = st.query_params.get("nav") if hasattr(st, "query_params") else None
+    if isinstance(nav, list):
+        nav = nav[0]
+    if nav in ("Dashboard", "IssueForm"):
+        return nav
+    return default
