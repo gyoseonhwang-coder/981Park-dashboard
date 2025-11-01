@@ -2,6 +2,13 @@ import streamlit as st
 import sys
 import os
 
+try:
+    from streamlit.source_util import get_pages
+    pages = get_pages("")
+    st.sidebar.write("🔍 Available pages:", list(pages.keys()))
+except Exception as e:
+    st.sidebar.write("⚠️ 페이지 목록 확인 실패:", e)
+
 
 def render_sidebar(active: str = "Dashboard"):
     """981Park Streamlit 사이드바 - Cloud/로컬 자동 감지 + 완전 안전 전환"""
