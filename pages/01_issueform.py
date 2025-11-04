@@ -11,6 +11,7 @@ from menu_ui import render_sidebar
 # 접수장애 웹훅 전송
 # ─────────────────────────────────────────────
 
+
 def send_google_chat_alert(form_data: dict):
     """Google Chat Webhook 알림 (981Park 장애 접수용)"""
     import requests
@@ -374,3 +375,21 @@ with col_recent:
         st.info("🔎 포지션을 선택하면 해당 포지션의 최근 장애 현황이 표시됩니다.")
 
 st.caption("© 2025 981Park Technical Support Team — Streamlit 장애 접수 및 실시간 현황")
+
+# 장애 접수 후
+log_sheet.append_row(new_row, value_input_option="USER_ENTERED")
+
+# ✅ Google Chat 알림 전송
+form_payload = {
+    "작성자": st.session_state.reporter,
+    "포지션": st.session_state.position,
+    "위치": st.session_state.location,
+    "설비명": st.session_state.equipment,
+    "세부장치": st.session_state.detail,
+    "장애유형": st.session_state.issue,
+    "장애내용": st.session_state.desc
+}
+
+print("🚀 Webhook 전송 테스트 시작:", form_payload)
+
+send_google_chat_alert(form_payload)
