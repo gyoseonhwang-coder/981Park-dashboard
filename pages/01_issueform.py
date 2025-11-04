@@ -290,6 +290,11 @@ with col_form:
                     "접수중",
                     "", "", "", "", ""
                 ]
+
+                # ✅ 접수내용 시트 불러오기
+                sh = gc.open("981파크 장애관리")
+                log_sheet = sh.worksheet("접수내용")
+
                 log_sheet.append_row(
                     new_row, value_input_option="USER_ENTERED")
 
