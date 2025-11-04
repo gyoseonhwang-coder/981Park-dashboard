@@ -364,7 +364,7 @@ raw = raw.dropna(how="all").reset_index(drop=True)
 
 first_col = raw.iloc[:, 3].astype(str)
 month_title_idx = first_col[first_col.str.contains(
-    r"(📅\s*)?\d{4}-\d{2}.*포지션", na=False)].index.tolist()
+    r"(📅\s*)?\d{4}-\d{2}.*TOP5", na=False)].index.tolist()
 month_blocks = []
 
 for i, idx in enumerate(month_title_idx):
