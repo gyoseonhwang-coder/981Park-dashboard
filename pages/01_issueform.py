@@ -1,3 +1,4 @@
+import requests
 import streamlit as st
 import pandas as pd
 import gspread
@@ -225,6 +226,18 @@ with col_form:
                 log_sheet.append_row(
                     new_row, value_input_option="USER_ENTERED")
 
+                # ✅ Google Chat Webhook 알림 전송
+                form_payload = {
+                    "작성자": st.session_state.reporter,
+                    "포지션": st.session_state.position,
+                    "위치": st.session_state.location,
+                    "설비명": st.session_state.equipment,
+                    "세부장치": st.session_state.detail,
+                    "장애유형": st.session_state.issue,
+                    "장애내용": st.session_state.desc
+                }
+                send_google_chat_alert(form_payload)
+
                 # 🎉 가상 모달 팝업 (기존 스타일 유지)
                 popup = st.empty()
                 with popup.container():
@@ -304,95 +317,39 @@ st.caption("© 2025 981Park Technical Support Team — Streamlit 장애 접수 �
 
 
 def send_google_chat_alert(form_data: dict):
-    """
-    Google Chat Webhook 알림 전송 함수
-    - Apps Script sendSlackAlert(form, now)와 동일 구조
-    - 카드형 메시지로 시각적 완성도 향상
-    """
+    """Google Chat Webhook 알림 (981Park 장애 접수용)"""
     import requests
     from datetime import datetime, timezone, timedelta
 
-    try:
-        WEBHOOK_URL = (
-            "https://chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
-            "?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI"
-            "&token=qpitTslB-dlzAaxy3nqBCSfSxOcjm1ly6vYWDTaPRB8"
+    WEBHOOK_URL = (
+        "https://chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
+        "?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI"
+        "&token=qpitTslB-dlzAaxy3nqBCSfSxOcjm1ly6vYWDTaPRB8"
+    )
+
+    now_kst = datetime.now(timezone(timedelta(hours=9)))
+    formatted_time = now_kst.strftime("%Y-%m-%d %H:%M")
+
+    message = {
+        "text": (
+            f"🚨 *981Park 장애 접수*\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"👤 작성자: {form_data['작성자']}\n"
+            f"📍 포지션: {form_data['포지션']} → {form_data['위치']}\n"
+            f"⚙️ 설비명: {form_data['설비명']} → {form_data.get('세부장치', '')}\n"
+            f"🚨 장애유형: {form_data['장애유형']}\n"
+            f"📝 내용: {form_data['장애내용']}\n"
+            f"🕒 접수시각: {formatted_time}\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📊 [981파크 장애관리 → 접수내용] 시트 자동 기록 완료"
         )
+    }
 
-        # 현재 시간 (KST)
-        now_kst = datetime.now(timezone(timedelta(hours=9)))
-        formatted_time = now_kst.strftime("%Y-%m-%d %H:%M")
-
-        # Google Chat 카드 메시지 구조
-        message = {
-            "cardsV2": [
-                {
-                    "cardId": "981park_issue_alert",
-                    "card": {
-                        "header": {
-                            "title": "🚨 장애 접수 알림",
-                            "subtitle": "981Park Technical Support System",
-                            "imageUrl": "https://cdn-icons-png.flaticon.com/512/564/564619.png",
-                            "imageType": "CIRCLE"
-                        },
-                        "sections": [
-                            {
-                                "header": f"📍 포지션: {form_data['포지션']} → {form_data['위치']}",
-                                "widgets": [
-                                    {
-                                        "decoratedText": {
-                                            "startIcon": {"knownIcon": "PERSON"},
-                                            "text": f"<b>작성자:</b> {form_data['작성자']}"
-                                        }
-                                    },
-                                    {
-                                        "decoratedText": {
-                                            "startIcon": {"knownIcon": "GEAR"},
-                                            "text": f"<b>설비명:</b> {form_data['설비명']} → {form_data.get('세부장치', '')}"
-                                        }
-                                    },
-                                    {
-                                        "decoratedText": {
-                                            "startIcon": {"knownIcon": "WARNING"},
-                                            "text": f"<b>장애유형:</b> {form_data['장애유형']}"
-                                        }
-                                    },
-                                    {
-                                        "decoratedText": {
-                                            "startIcon": {"knownIcon": "DESCRIPTION"},
-                                            "text": f"<b>내용:</b> {form_data['장애내용']}"
-                                        }
-                                    },
-                                    {
-                                        "decoratedText": {
-                                            "startIcon": {"knownIcon": "CLOCK"},
-                                            "text": f"<b>접수시각:</b> {formatted_time}"
-                                        }
-                                    }
-                                ]
-                            },
-                            {
-                                "header": "🧾 시스템 기록",
-                                "widgets": [
-                                    {
-                                        "textParagraph": {
-                                            "text": "📊 해당 접수건은 Google Sheets **[981파크 장애관리 → 접수내용]** 시트에 자동 저장되었습니다."
-                                        }
-                                    }
-                                ]
-                            }
-                        ]
-                    }
-                }
-            ]
-        }
-
-        # Google Chat Webhook POST 요청
-        resp = requests.post(WEBHOOK_URL, json=message)
-        if resp.status_code != 200:
-            print(f"🚨 Webhook 전송 실패: {resp.status_code} - {resp.text}")
+    try:
+        resp = requests.post(WEBHOOK_URL, json=message, timeout=10)
+        if resp.status_code == 200:
+            print("✅ Google Chat 알림 전송 성공")
         else:
-            print("✅ Google Chat 알림 전송 완료")
-
+            print(f"🚨 Webhook 실패: {resp.status_code} / {resp.text}")
     except Exception as e:
-        print(f"🚨 Google Chat 알림 오류: {e}")
+        print(f"❌ Webhook 전송 중 오류: {e}")
