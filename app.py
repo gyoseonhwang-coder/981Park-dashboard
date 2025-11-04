@@ -364,11 +364,11 @@ raw = raw.dropna(how="all").reset_index(drop=True)
 
 first_col = raw.iloc[:, 3].astype(str)
 month_title_idx = first_col[first_col.str.contains(
-    r"(📅\s*)?\d{4}-\d{2}.*포지션별.*장애", na=False)].index.tolist()
+    r"(📅\s*)?\d{4}-\d{2}.*포지션", na=False)].index.tolist()
 month_blocks = []
 
 for i, idx in enumerate(month_title_idx):
-    title_text = str(raw.iloc[idx, 0])
+    title_text = str(raw.iloc[idx, 3])
     m = re.search(r"(\d{4}-\d{2})", title_text)
     if not m:
         continue
