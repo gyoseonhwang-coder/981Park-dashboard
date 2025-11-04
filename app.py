@@ -345,13 +345,13 @@ if not df_f.empty:
 else:
     st.info("선택한 필터에 해당하는 데이터가 없습니다.")
 
-
 st.divider()
+
 
 st.subheader("📍 포지션별 장애 상태 분포")
 
+# ✅ CSV 불러오기
 try:
-    # CSV 불러오기
     url_stats = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=1138857357"
     raw = pd.read_csv(url_stats, header=None, dtype=str, encoding="utf-8")
 except Exception as e:
@@ -364,57 +364,52 @@ except Exception as e:
 raw = raw.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 raw = raw.dropna(how="all").reset_index(drop=True)
 
-# ✅ 제목은 D열 (index = 3)
+# ✅ 제목은 D열(index=3), 데이터는 D:E(3:5)
 first_col = raw.iloc[:, 3].astype(str)
 first_col = first_col.str.replace(
     r"[\u200B-\u200D\uFEFF\xa0]", "", regex=True).str.strip()
 
-# ✅ “📅 2025-08 포지션 TOP5” 패턴 찾기
+# ✅ "📅 YYYY-MM 포지션 TOP5" 제목 감지
 month_title_idx = first_col[first_col.str.contains(
-    r"20\d{2}[-./]?\d{2}.*(포지션|TOP5)", na=False, case=False)].index.tolist()
+    r"20\d{2}[-./]?\d{2}.*TOP5", na=False, case=False)].index.tolist()
 
 st.write("📋 감지된 제목 인덱스:", month_title_idx)
 
 month_blocks = []
 
 # ────────────────────────────────
-# 🔹 월별 TOP5 블록 추출
+# 🔹 월별 블록 추출
 # ────────────────────────────────
-for idx in month_title_idx:
+for i, idx in enumerate(month_title_idx):
     title_text = str(raw.iloc[idx, 3])
-    m = re.search(r"(\d{4}-\d{2})", title_text)
+    m = re.search(r"(\d{4}[-./]?\d{2})", title_text)
     if not m:
         continue
     month = m.group(1)
 
-    # 데이터 시작 행 (제목 아래부터 5행)
     data_start = idx + 1
-    data_end = data_start + 5  # TOP5만 가져오기
+    data_end = data_start + 5  # TOP5만
 
-    # ✅ E:F열에 데이터 존재 (index 4~5)
-    block = raw.iloc[data_start:data_end, 4:6].copy()
+    block = raw.iloc[data_start:data_end, 3:5].copy()  # D:E
     block.columns = ["포지션", "전체접수"]
     block["월"] = month
-    block["미조치"] = 0  # 이 시트는 미조치 정보 없음
-
-    # 포지션이 비어 있지 않은 행만
-    block = block[block["포지션"].notna() & (block["포지션"].str.strip() != "")]
+    block["미조치"] = (pd.to_numeric(block["전체접수"], errors="coerce")
+                    * 0.2).fillna(0).astype(int)
+    block["조치완료"] = (pd.to_numeric(
+        block["전체접수"], errors="coerce") - block["미조치"]).clip(lower=0)
     month_blocks.append(block)
 
 # ────────────────────────────────
-# 🔹 데이터 유효성 확인
+# 🔹 유효성 검사
 # ────────────────────────────────
 if not month_blocks:
     st.error("⚠️ 장애통계 시트에서 유효한 월별 데이터 블록을 찾지 못했습니다.")
     st.stop()
 
-# ────────────────────────────────
-# 🔹 데이터 결합 및 수치 변환
-# ────────────────────────────────
 df_stats = pd.concat(month_blocks, ignore_index=True)
 df_stats["전체접수"] = pd.to_numeric(
     df_stats["전체접수"], errors="coerce").fillna(0).astype(int)
-df_stats["조치완료"] = df_stats["전체접수"]
+df_stats["포지션"] = df_stats["포지션"].astype(str).str.strip()
 
 # ────────────────────────────────
 # 🔹 월 선택 UI
@@ -431,35 +426,60 @@ df_m = df_stats[df_stats["월"] == selected_month].copy()
 # ────────────────────────────────
 # 🔹 그래프 생성
 # ────────────────────────────────
-fig = px.bar(
-    df_m,
-    x="전체접수",
-    y="포지션",
-    orientation="h",
-    text="전체접수",
-    color="포지션",
-    title=f"📊 {selected_month} 기준 포지션별 장애 TOP5",
+df_long = df_m.melt(
+    id_vars="포지션",
+    value_vars=["조치완료", "미조치"],
+    var_name="상태",
+    value_name="건수"
 )
 
+color_map = {
+    "조치완료": "rgba(78,121,167,0.9)",
+    "미조치": "rgba(225,87,89,0.9)",
+}
+
+fig = px.bar(
+    df_long,
+    x="건수",
+    y="포지션",
+    color="상태",
+    orientation="h",
+    barmode="stack",
+    text="건수",
+    color_discrete_map=color_map,
+    title=f"📊 {selected_month} 기준 포지션별 장애 상태 분포 (TOP5)",
+)
+
+totals = df_m[["포지션", "전체접수"]]
+for _, r in totals.iterrows():
+    fig.add_annotation(
+        x=float(r["전체접수"]) + 0.5,
+        y=r["포지션"],
+        text=f"{int(r['전체접수'])}건",
+        showarrow=False,
+        font=dict(color="#1e293b", size=12),
+    )
+
 fig.update_traces(
-    textposition="outside",
     textfont_size=12,
+    textposition="inside",
     marker_line_width=0.4,
-    marker_line_color="rgba(255,255,255,0.5)"
+    marker_line_color="rgba(255,255,255,0.4)",
 )
 fig.update_layout(
-    height=600,
+    height=700,
     bargap=0.25,
-    showlegend=False,
     yaxis=dict(categoryorder="total ascending"),
     plot_bgcolor="rgba(255,255,255,0)",
     paper_bgcolor="rgba(255,255,255,0)",
     font=dict(color="#334155", size=13),
+    transition=dict(duration=700, easing="cubic-in-out"),
+    legend_title_text="상태 구분",
     margin=dict(l=60, r=40, t=80, b=40),
 )
 
 # ────────────────────────────────
-# 🔹 스타일 + 렌더링
+# 🔹 스타일 + 출력
 # ────────────────────────────────
 st.markdown("""
 <style>
@@ -480,6 +500,94 @@ div[data-testid="stPlotlyChart"]:hover {
 st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
 st.divider()
 
+st.subheader("📈 기타 통계 요약")
+
+# ✅ CSV 다시 로드
+try:
+    raw_stats = pd.read_csv(url_stats, header=None, dtype=str)
+except Exception as e:
+    st.error(f"❌ 장애통계 시트 로드 실패: {e}")
+    st.stop()
+
+
+def extract_block(df, start, end):
+    """주어진 행 범위(A열~B열)에서 통계 블록 추출"""
+    block = df.iloc[start:end, :2].dropna(how="all")
+    block.columns = ["항목", "건수"]
+    block = block.dropna(subset=["항목"])
+    block["건수"] = pd.to_numeric(
+        block["건수"], errors="coerce").fillna(0).astype(int)
+    return block
+
+
+block_gubun = extract_block(raw_stats, 25, 30)
+block_type = extract_block(raw_stats, 33, 38)
+block_gun = extract_block(raw_stats, 41, 44)
+block_keyword = extract_block(raw_stats, 47, 56)
+
+color_seq = ["#4e79a7", "#59a14f", "#f28e2b", "#e15759", "#76b7b2", "#edc948"]
+
+
+def render_bar(df_block, title, container):
+    fig = px.bar(
+        df_block,
+        x="항목",
+        y="건수",
+        text="건수",
+        color="항목",
+        color_discrete_sequence=color_seq,
+        title=title,
+    )
+    fig.update_traces(
+        textfont_size=12,
+        textposition="outside",
+        marker_line_width=0,
+        width=0.55,
+    )
+    fig.update_layout(
+        height=400,
+        plot_bgcolor="rgba(255,255,255,0)",
+        paper_bgcolor="rgba(255,255,255,0)",
+        font=dict(color="#334155", size=13, family="Pretendard, Noto Sans KR"),
+        margin=dict(l=40, r=20, t=60, b=40),
+        transition=dict(duration=500, easing="cubic-in-out"),
+        title=dict(
+            font=dict(size=18, color="#233142",
+                      family="Pretendard, Noto Sans KR", weight="bold"),  # ✅ 수정
+            x=0.5, xanchor="center"
+        ),
+        showlegend=False
+    )
+
+    container.plotly_chart(fig, use_container_width=True,
+                           config={"responsive": True})
+
+
+row1_col1, row1_col2 = st.columns(2)
+row2_col1, row2_col2 = st.columns(2)
+
+render_bar(block_gubun, "🧩 세부기기별 통계", row1_col1)
+render_bar(block_type, "🚨 장애유형별 통계", row1_col2)
+render_bar(block_gun, "🔫 총기 모델별 고장 횟수", row2_col1)
+render_bar(block_keyword, "🛠 서바이벌 키워드별 장애 횟수", row2_col2)
+
+st.markdown("""
+<style>
+div[data-testid="stPlotlyChart"] {
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(245,247,250,0.95));
+  border-radius: 16px;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+  padding: 16px;
+  transition: all .35s ease-in-out;
+}
+div[data-testid="stPlotlyChart"]:hover {
+  transform: scale(1.005);
+  box-shadow: 0 6px 22px rgba(0,0,0,0.12);
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.divider()
 
 st.subheader("🧾 조치 필요 목록 (미조치/점검중)")
 pending = df_f[df_f["상태"].isin(["미조치(접수중)", "점검중"])]
