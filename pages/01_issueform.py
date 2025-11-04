@@ -22,19 +22,82 @@ def send_google_chat_alert(form_data: dict):
     now_kst = datetime.now(timezone(timedelta(hours=9)))
     formatted_time = now_kst.strftime("%Y-%m-%d %H:%M")
 
+    # 🔥 긴급 여부 확인
+    is_urgent = form_data.get("긴급", False)
+
+    # 🔷 카드 헤더 색상과 타이틀 결정
+    if is_urgent:
+        header_color = "#D93025"  # 붉은색
+        header_title = "🔥 긴급 장애 접수"
+    else:
+        header_color = "#1A73E8"  # 파란색
+        header_title = "📋 일반 장애 접수"
+
+    # ✅ Google Chat 카드 메시지 포맷 (정식 카드형)
     message = {
-        "text": (
-            f"🚨 *981Park 장애 접수*\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"👤 작성자: {form_data['작성자']}\n"
-            f"📍 포지션: {form_data['포지션']} → {form_data['위치']}\n"
-            f"⚙️ 설비명: {form_data['설비명']} → {form_data.get('세부장치', '')}\n"
-            f"🚨 장애유형: {form_data['장애유형']}\n"
-            f"📝 내용: {form_data['장애내용']}\n"
-            f"🕒 접수시각: {formatted_time}\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📊 [981파크 장애관리 → 접수내용] 시트 자동 기록 완료"
-        )
+        "cardsV2": [
+            {
+                "cardId": "981park-issue",
+                "card": {
+                    "header": {
+                        "title": header_title,
+                        "subtitle": f"{formatted_time}",
+                        "imageUrl": "https://cdn-icons-png.flaticon.com/512/906/906343.png",
+                        "imageType": "CIRCLE",
+                        "imageAltText": "Alert",
+                        "backgroundColor": header_color
+                    },
+                    "sections": [
+                        {
+                            "widgets": [
+                                {
+                                    "decoratedText": {
+                                        "startIcon": {"knownIcon": "PERSON"},
+                                        "topLabel": "작성자",
+                                        "text": form_data.get("작성자", "-")
+                                    }
+                                },
+                                {
+                                    "decoratedText": {
+                                        "startIcon": {"knownIcon": "LOCATION_ON"},
+                                        "topLabel": "포지션 / 위치",
+                                        "text": f"{form_data.get('포지션', '-')} → {form_data.get('위치', '-')}"
+                                    }
+                                },
+                                {
+                                    "decoratedText": {
+                                        "startIcon": {"knownIcon": "BUILD"},
+                                        "topLabel": "설비명 / 세부기기",
+                                        "text": f"{form_data.get('설비명', '-')} → {form_data.get('세부장치', '-')}"
+                                    }
+                                },
+                                {
+                                    "decoratedText": {
+                                        "startIcon": {"knownIcon": "WARNING"},
+                                        "topLabel": "장애유형",
+                                        "text": form_data.get("장애유형", "-")
+                                    }
+                                },
+                                {
+                                    "decoratedText": {
+                                        "startIcon": {"knownIcon": "DESCRIPTION"},
+                                        "topLabel": "장애내용",
+                                        "text": form_data.get("장애내용", "-")
+                                    }
+                                },
+                                {
+                                    "decoratedText": {
+                                        "startIcon": {"knownIcon": "CLOCK"},
+                                        "topLabel": "접수시각 (KST)",
+                                        "text": formatted_time
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            }
+        ]
     }
 
     try:
@@ -233,7 +296,8 @@ with col_form:
                     "설비명": st.session_state.equipment,
                     "세부장치": st.session_state.detail,
                     "장애유형": st.session_state.issue,
-                    "장애내용": st.session_state.desc
+                    "장애내용": st.session_state.desc,
+                    "긴급": st.session_state.urgent,
                 }
                 send_google_chat_alert(form_payload)
 
