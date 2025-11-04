@@ -364,8 +364,10 @@ raw = raw.dropna(how="all").reset_index(drop=True)
 
 first_col = raw.iloc[:, 3].astype(str)
 month_title_idx = first_col[first_col.str.contains(
-    r"(📅\s*)?\d{4}-\d{2}.*TOP5", na=False)].index.tolist()
+    r"(\d{4}[-./]?\d{2}).*?(포지션)?.*?(TOP\s*5)?", na=False, case=False)].index.tolist()
 month_blocks = []
+
+st.write("📋 감지된 제목 목록:", list(raw.iloc[month_title_idx, 3]))
 
 for i, idx in enumerate(month_title_idx):
     title_text = str(raw.iloc[idx, 3])
