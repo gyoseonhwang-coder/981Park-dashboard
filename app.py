@@ -363,11 +363,17 @@ raw = raw.loc[:, ~(raw.isna() | (raw == "")).all(axis=0)]
 raw = raw.dropna(how="all").reset_index(drop=True)
 
 first_col = raw.iloc[:, 3].astype(str)
+
+first_col = first_col.str.replace(
+    r"[\u200B-\u200D\uFEFF\xa0]", "", regex=True).str.strip()
+
 month_title_idx = first_col[first_col.str.contains(
-    r"(\d{4}[-./]?\d{2}).*?(포지션)?.*?(TOP\s*5)?", na=False, case=False)].index.tolist()
+    r"20\d{2}[-./]?\d{2}.*(포지션|TOP)", na=False, case=False)].index.tolist()
+
 month_blocks = []
 
-st.write("📋 감지된 제목 목록:", list(raw.iloc[month_title_idx, 3]))
+st.write("🔍 제목 후보 미리보기:", first_col.head(30).tolist())
+st.write("📋 감지된 제목 인덱스:", month_title_idx)
 
 for i, idx in enumerate(month_title_idx):
     title_text = str(raw.iloc[idx, 3])
