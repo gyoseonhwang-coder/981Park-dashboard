@@ -21,6 +21,7 @@ KST = ZoneInfo("Asia/Seoul")
 
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
 
+
 def fetch_csv(url: str) -> pd.DataFrame:
     """Google Sheets CSV를 안전하게 로드(HTML 응답/구분자/인코딩 보정)"""
     resp = requests.get(url, timeout=15)
@@ -35,6 +36,7 @@ def fetch_csv(url: str) -> pd.DataFrame:
     df.columns = df.columns.str.replace("\n", "", regex=False).str.strip()
     df = df.loc[:, ~df.columns.str.contains(r"^Unnamed", na=False)]
     return df
+
 
 def parse_jeju_date(val):
     """
@@ -360,7 +362,7 @@ raw = raw.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 raw = raw.loc[:, ~(raw.isna() | (raw == "")).all(axis=0)]
 raw = raw.dropna(how="all").reset_index(drop=True)
 
-first_col = raw.iloc[:, 0].astype(str)
+first_col = raw.iloc[:, 3].astype(str)
 month_title_idx = first_col[first_col.str.contains(
     r"(📅\s*)?\d{4}-\d{2}.*포지션별.*장애", na=False)].index.tolist()
 month_blocks = []
@@ -508,7 +510,7 @@ st.plotly_chart(fig_pos, use_container_width=True, config={"responsive": True})
 
 st.divider()
 
-st.subheader("📈 통합 장애 통계 요약")
+st.subheader("📈 기타 통계 요약")
 
 # ✅ CSV 다시 로드
 try:
