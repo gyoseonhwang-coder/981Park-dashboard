@@ -203,8 +203,8 @@ else:
 
 st.title("🚀 981파크 장애관리 실시간 대시보드")
 # st.caption("접수내용 실시간 연동 (30초 자동 갱신) — 포지션/위치별 상태 분포까지")
-# with st.expander("필터 열기 / 닫기", expanded=False):
-st.write("원하는 범위를 선택하면 KPI/그래프가 즉시 재계산됩니다.")
+with st.expander("필터 열기 / 닫기", expanded=False):
+# st.write("원하는 범위를 선택하면 KPI/그래프가 즉시 재계산됩니다.")
 
 sel_months = st.multiselect(
     "📆 월 선택", all_month_labels, default=all_month_labels)
