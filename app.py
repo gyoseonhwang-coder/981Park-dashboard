@@ -9,6 +9,19 @@ import requests
 import io
 import re
 
+
+def _month_key(label: str) -> int:
+    """
+    '2025년 8월' → 202508 같은 정렬 키로 변환
+    매칭 실패 시 0 반환(가장 앞)
+    """
+    m = re.match(r"^\s*(\d{4})년\s*(\d{1,2})월\s*$", str(label))
+    if not m:
+        return 0
+    y, mth = int(m.group(1)), int(m.group(2))
+    return y * 100 + mth
+
+
 st.markdown(
     "<style>[data-testid='stSidebarNav'] {display: none !important;}</style>", unsafe_allow_html=True)
 
@@ -237,11 +250,19 @@ try:
 except ValueError:
     current_month = now_dt.strftime("%Y년 %#m월")
 
-available_months = sorted(df["월"].unique())
+# ✅ 월 라벨을 시간순(오름차순)으로 정렬한 뒤
+available_months_asc = sorted(df["월"].unique(), key=_month_key)
 
-default_month = current_month if current_month in available_months else available_months[-1]
+# 기본월 결정(없으면 가장 최신 = 마지막)
+default_month = current_month if current_month in available_months_asc else available_months_asc[-1]
+
+# ✅ 드롭다운은 최신→오래된(내림차순)으로 보여주되 기본 선택은 '기본월'
+available_months_desc = list(reversed(available_months_asc))
 selected_month = st.selectbox(
-    "📆 조회할 월 선택", available_months, index=available_months.index(default_month))
+    "📆 조회할 월 선택",
+    available_months_desc,
+    index=available_months_desc.index(default_month),
+)
 
 df_month = df[df["월"] == selected_month]
 m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
@@ -281,15 +302,16 @@ if not df_f.empty:
         .reindex(columns=["미조치(접수중)", "점검중", "완료"], fill_value=0)
     )
 
+    # ✅ x축(월) 시간순으로 정렬
+    monthly_stats = monthly_stats.sort_index(
+        key=lambda idx: [_month_key(x) for x in idx])
+
     monthly_stats["전체건수"] = monthly_stats.sum(axis=1)
-    monthly_stats["완료율(%)"] = (
-        monthly_stats["완료"] / monthly_stats["전체건수"] * 100
-    ).round(1)
+    monthly_stats["완료율(%)"] = (monthly_stats["완료"] /
+                               monthly_stats["전체건수"] * 100).round(1)
 
     import plotly.graph_objects as go
-
     fig = go.Figure()
-
     fig.add_trace(go.Scatter(
         x=monthly_stats.index,
         y=monthly_stats["전체건수"],
@@ -300,7 +322,6 @@ if not df_f.empty:
         text=monthly_stats["전체건수"],
         textposition="top center"
     ))
-
     fig.add_trace(go.Scatter(
         x=monthly_stats.index,
         y=monthly_stats["완료율(%)"],
@@ -312,7 +333,6 @@ if not df_f.empty:
         text=monthly_stats["완료율(%)"].astype(str) + "%",
         textposition="bottom center"
     ))
-
     fig.update_layout(
         height=650,
         title=dict(
@@ -324,14 +344,8 @@ if not df_f.empty:
         xaxis=dict(title="월", tickfont=dict(size=13)),
         yaxis=dict(title="접수 건수", showgrid=True,
                    gridcolor="rgba(200,200,200,0.2)"),
-        yaxis2=dict(
-            title="완료율(%)",
-            overlaying="y",
-            side="right",
-            showgrid=False,
-            range=[0, 110],
-            tickfont=dict(size=13)
-        ),
+        yaxis2=dict(title="완료율(%)", overlaying="y", side="right",
+                    showgrid=False, range=[0, 110], tickfont=dict(size=13)),
         plot_bgcolor="rgba(255,255,255,0)",
         paper_bgcolor="rgba(255,255,255,0)",
         font=dict(color="#334155", size=13),
@@ -339,9 +353,7 @@ if not df_f.empty:
         margin=dict(l=60, r=60, t=80, b=60),
         transition=dict(duration=700, easing="cubic-in-out"),
     )
-
     st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
-
 else:
     st.info("선택한 필터에 해당하는 데이터가 없습니다.")
 
@@ -373,7 +385,7 @@ first_col = first_col.str.replace(
 month_title_idx = first_col[first_col.str.contains(
     r"20\d{2}[-./]?\d{2}.*TOP5", na=False, case=False)].index.tolist()
 
-st.write("📋 감지된 제목 인덱스:", month_title_idx)
+# st.write("📋 감지된 제목 인덱스:", month_title_idx)
 
 month_blocks = []
 
