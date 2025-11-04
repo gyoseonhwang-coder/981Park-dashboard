@@ -202,24 +202,24 @@ else:
     all_month_labels = []
 
 st.title("🚀 981파크 장애관리 실시간 대시보드")
-st.caption("접수내용 실시간 연동 (30초 자동 갱신) — 포지션/위치별 상태 분포까지")
-with st.expander("필터 열기 / 닫기", expanded=False):
-    st.write("원하는 범위를 선택하면 KPI/그래프가 즉시 재계산됩니다.")
+# st.caption("접수내용 실시간 연동 (30초 자동 갱신) — 포지션/위치별 상태 분포까지")
+# with st.expander("필터 열기 / 닫기", expanded=False):
+st.write("원하는 범위를 선택하면 KPI/그래프가 즉시 재계산됩니다.")
 
-    sel_months = st.multiselect(
-        "📆 월 선택", all_month_labels, default=all_month_labels)
+sel_months = st.multiselect(
+    "📆 월 선택", all_month_labels, default=all_month_labels)
 
-    all_positions = sorted(df["포지션"].dropna().astype(str).unique())
-    sel_positions = st.multiselect(
-        "📍 포지션 선택", all_positions, default=all_positions)
+all_positions = sorted(df["포지션"].dropna().astype(str).unique())
+sel_positions = st.multiselect(
+    "📍 포지션 선택", all_positions, default=all_positions)
 
-    all_locations = sorted(df["위치"].dropna().astype(str).unique())
-    sel_locations = st.multiselect(
-        "🏗️ 위치 선택", all_locations, default=all_locations)
+all_locations = sorted(df["위치"].dropna().astype(str).unique())
+sel_locations = st.multiselect(
+    "🏗️ 위치 선택", all_locations, default=all_locations)
 
-    status_options = ["점검중", "미조치(접수중)", "완료"]
-    sel_status = st.multiselect(
-        "⏱ 상태 선택", status_options, default=status_options)
+status_options = ["점검중", "미조치(접수중)", "완료"]
+sel_status = st.multiselect(
+    "⏱ 상태 선택", status_options, default=status_options)
 
 mask = (
     df["월"].isin(sel_months if sel_months else all_month_labels) &
