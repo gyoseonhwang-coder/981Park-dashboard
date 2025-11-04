@@ -37,5 +37,15 @@ def render_sidebar(active: str = "Dashboard"):
             except Exception:
                 st.page_link("pages/01_issueform.py", label="🧾 장애 접수")
 
+        # ✅ 장애 처리 버튼
+        if st.button("🧰 장애 처리", use_container_width=True):
+            try:
+                if is_cloud:
+                    st.switch_page("pages/02_issue_manage")
+                else:
+                    st.switch_page("pages/02_issue_manage.py")
+            except Exception:
+                st.page_link("pages/02_issue_manage.py", label="🧰 장애 처리")
+
         st.markdown("---")
         st.caption("© 2025 981Park Technical Support Team")

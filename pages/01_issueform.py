@@ -7,6 +7,9 @@ from datetime import datetime
 import time
 from menu_ui import render_sidebar
 
+# ─────────────────────────────────────────────
+# 접수장애 웹훅 전송
+# ─────────────────────────────────────────────
 
 def send_google_chat_alert(form_data: dict):
     """Google Chat Webhook 알림 (981Park 장애 접수용)"""
