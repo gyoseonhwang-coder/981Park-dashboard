@@ -268,13 +268,22 @@ with col_form:
     with col_btn1:
         submit = st.button("✅ 장애 접수 등록", use_container_width=True)
 
+    # 버튼 영역
+    col_btn1, col_btn2 = st.columns(2)
+    with col_btn1:
+        submit = st.button("✅ 장애 접수 등록", use_container_width=True)
+
+    # 전송 로직
     if submit:
         if not (st.session_state.position and st.session_state.location and
                 st.session_state.equipment and st.session_state.reporter and st.session_state.desc):
             st.warning("⚠️ 필수 항목(포지션, 위치, 설비명, 작성자, 내용)을 모두 입력해주세요.")
         else:
             try:
-                log_sheet = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
+                # ✅ Google Sheet 로드
+                sh = gc.open(SPREADSHEET_NAME)
+                log_sheet = sh.worksheet(SHEET_LOG)
+
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
                 new_row = [
@@ -287,17 +296,14 @@ with col_form:
                     st.session_state.detail,
                     st.session_state.issue,
                     st.session_state.desc,
-                    "접수중",
-                    "", "", "", "", ""
+                    "접수중", "", "", "", "", ""
                 ]
 
-                # ✅ 접수내용 시트 불러오기
-                sh = gc.open("981파크 장애관리")
-                log_sheet = sh.worksheet("접수내용")
-
+                # ✅ 시트에 장애 행 추가
                 log_sheet.append_row(
                     new_row, value_input_option="USER_ENTERED")
 
+                # ✅ Webhook 알림용 데이터 구성
                 form_payload = {
                     "작성자": st.session_state.reporter,
                     "포지션": st.session_state.position,
@@ -308,8 +314,13 @@ with col_form:
                     "장애내용": st.session_state.desc,
                     "긴급": st.session_state.urgent,
                 }
-                send_google_chat_alert(form_payload)
 
+                # ✅ Webhook 호출
+                st.toast("🚀 Google Chat 알림 전송 중...", icon="💬")
+                send_google_chat_alert(form_payload)
+                st.toast("✅ Google Chat 알림 완료", icon="✅")
+
+                # 🎉 팝업 (장애 접수 완료 안내)
                 popup = st.empty()
                 with popup.container():
                     st.markdown(
@@ -334,12 +345,14 @@ with col_form:
                         unsafe_allow_html=True
                     )
 
+                # 잠시 대기 후 화면 리셋
                 time.sleep(2.0)
                 popup.empty()
                 st.rerun()
 
             except Exception as e:
                 st.error(f"❌ 전송 중 오류 발생: {e}")
+
 
 with col_recent:
     st.subheader("📌 미조치 / 점검중 장애 현황")
