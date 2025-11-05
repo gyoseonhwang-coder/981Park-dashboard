@@ -118,7 +118,7 @@ if st.button("🚧 장애 접수", use_container_width=True):
     else:
         issue = filtered.iloc[int(selected_idx)]
 
-        with st.modal("⚙️ 장애 접수 처리"):
+        with st.expander("⚙️ 장애 접수 처리", expanded=True):
             st.markdown(f"### ⚙️ {issue['설비명']} 장애 접수")
             st.markdown(
                 f"""
