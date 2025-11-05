@@ -47,10 +47,8 @@ def load_issue_log() -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(data[1:], columns=data[0])
-
     if "날짜" in df.columns:
-        df["날짜"] = df["날짜"].apply(lambda x: x if x not in [
-                                  None, "", " "] else "—")
+        df["날짜"] = df["날짜"].apply(lambda x: x if x.strip() != "" else "—")
 
     return df
 
@@ -85,58 +83,45 @@ if pending.empty:
     st.stop()
 
 # ─────────────────────────────────────────────
-# AgGrid 테이블 표시 (행 클릭 가능)
+# AgGrid 테이블 표시 (행 클릭 + 더블클릭)
 # ─────────────────────────────────────────────
 gb = GridOptionsBuilder.from_dataframe(pending[cols_show])
-gb.configure_selection("single", use_checkbox=False)
-gb.configure_grid_options(domLayout="normal")
-gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
-
-# ✅ 더블클릭 이벤트 핸들러 추가
-gb.configure_grid_options(onCellDoubleClicked={
-    "function": """
-        function(e) {
-            window.dispatchEvent(new CustomEvent("aggrid_doubleclick", {detail: e.data}));
-        }
-    """
-})
-
+gb.configure_selection("single", use_checkbox=True)
+gb.configure_grid_options(
+    onCellDoubleClicked={
+        "function": """
+            function(e) {
+                window.dispatchEvent(
+                    new CustomEvent("aggrid_doubleclick", {detail: e.data})
+                );
+            }
+        """
+    }
+)
+gb.configure_pagination(paginationAutoPageSize=True)
 grid_options = gb.build()
-
-st.caption("🔍 행을 더블클릭하면 상세 접수/처리 팝업이 열립니다.")
 
 grid_response = AgGrid(
     pending[cols_show],
     gridOptions=grid_options,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
+    enable_enterprise_modules=False,
+    theme="balham",
+    height=320,
     fit_columns_on_grid_load=True,
-    height=340,
-    allow_unsafe_jscode=True  # ✅ JS 이벤트 허용
 )
 
-# ✅ JS → Streamlit 통신 (더블클릭 감지)
-clicked_data = st.session_state.get("doubleclicked_row", None)
+st.caption("🔍 행을 더블클릭하면 상세 접수/처리 팝업이 열립니다.")
 
-# ✅ 더블클릭 감지용 JS 이벤트 리스너 등록
-st.components.v1.html(
-    """
-    <script>
-    window.addEventListener("aggrid_doubleclick", (event) => {
-        const data = JSON.stringify(event.detail);
-        fetch("/_stcore/custom-component", {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({"type": "doubleclick", "data": data})
-        });
-    });
-    </script>
-    """,
-    height=0,
-)
-
+# 선택된 행 처리
+selected_rows = grid_response.get("selected_rows", [])
+if selected_rows:
+    st.session_state.popup_issue = selected_rows[0]
+else:
+    st.session_state.popup_issue = None
 
 # ─────────────────────────────────────────────
-# 팝업용 스타일 정의
+# 팝업 스타일 (오버레이 카드)
 # ─────────────────────────────────────────────
 st.markdown("""
 <style>
@@ -144,17 +129,17 @@ st.markdown("""
     position: fixed;
     top: 0; left: 0;
     width: 100%; height: 100%;
-    background-color: rgba(0,0,0,0.5);
+    background-color: rgba(0,0,0,0.55);
     display: flex; align-items: center; justify-content: center;
     z-index: 9999;
 }
 .popup-card {
     background-color: white;
-    padding: 28px;
+    padding: 30px;
     border-radius: 12px;
-    box-shadow: 0 6px 25px rgba(0,0,0,0.25);
+    box-shadow: 0 6px 25px rgba(0,0,0,0.3);
     width: 480px;
-    animation: fadeIn 0.25s ease-in-out;
+    animation: fadeIn 0.3s ease-in-out;
     position: relative;
 }
 .popup-close {
@@ -172,21 +157,11 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
-# 팝업 표시 로직
+# 팝업 표시 및 처리 로직
 # ─────────────────────────────────────────────
-if "popup_issue" not in st.session_state:
-    st.session_state.popup_issue = None
-
-# ✅ selected 기본값 안전하게 초기화
-selected = grid_response.get("selected_rows", [])
-
-# ✅ 선택된 행 있을 경우 팝업 오픈
-if isinstance(selected, list) and len(selected) > 0:
-    st.session_state.popup_issue = selected[0]
-
-
 if st.session_state.popup_issue:
     issue = st.session_state.popup_issue
+
     st.markdown(f"""
     <div class="popup-overlay" id="popup">
         <div class="popup-card">
@@ -223,19 +198,20 @@ if st.session_state.popup_issue:
                     (df["설비명"] == issue["설비명"])
                 ]
                 if match.empty:
-                    st.error("⚠️ 시트에서 해당 장애를 찾을 수 없습니다.")
+                    st.error("⚠️ 해당 장애를 시트에서 찾을 수 없습니다.")
                 else:
                     row_index = match.index[0] + 2
-                    ws.update_cell(row_index, 10, "점검중")  # 접수처리
-                    ws.update_cell(row_index, 12, 담당자)    # 점검자
+                    ws.update_cell(row_index, 10, "점검중")
+                    ws.update_cell(row_index, 12, 담당자)
                     ws.update_cell(
                         row_index, 11, 포지션_이동 if 포지션_이동 != "선택 안 함" else "")
                     ws.update_cell(row_index, 15, "장애 등록")
+
                     st.success(f"✅ '{issue['설비명']}' 장애가 점검중으로 변경되었습니다.")
                     st.session_state.popup_issue = None
                     st.rerun()
             except Exception as e:
-                st.error(f"❌ 점검 시작 중 오류: {e}")
+                st.error(f"❌ 접수 처리 중 오류 발생: {e}")
 
     # 점검중 → 완료
     elif issue.get("상태") == "점검중":
@@ -253,11 +229,12 @@ if st.session_state.popup_issue:
                 else:
                     row_index = match.index[0] + 2
                     now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-                    ws.update_cell(row_index, 10, "완료")  # 접수처리
-                    ws.update_cell(row_index, 13, now)     # 완료일자
-                    ws.update_cell(row_index, 14, 점검내용)  # 점검내용
+                    ws.update_cell(row_index, 10, "완료")
+                    ws.update_cell(row_index, 13, now)
+                    ws.update_cell(row_index, 14, 점검내용)
                     ws.update_cell(row_index, 15, "장애 처리")
                     ws.update_cell(row_index, 17, "종결")
+
                     st.success(f"✅ '{issue['설비명']}' 장애가 완료 처리되었습니다.")
                     st.session_state.popup_issue = None
                     st.rerun()
