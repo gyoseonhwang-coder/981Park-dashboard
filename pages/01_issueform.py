@@ -55,6 +55,11 @@ def send_google_chat_alert(form_data: dict):
                         {
                             "widgets": [
                                 {"decoratedText": {
+                                    "startIcon": {"knownIcon": "STAR"},
+                                    "topLabel": "우선순위",
+                                    "text": "🔥 긴급 장애" if form_data.get("긴급", False) else "✅ 일반 장애"
+                                }},
+                                {"decoratedText": {
                                     "startIcon": {"knownIcon": "PERSON"},
                                     "topLabel": "작성자",
                                     "text": form_data.get("작성자", "-")
@@ -92,19 +97,27 @@ def send_google_chat_alert(form_data: dict):
         ]
     }
 
-    # ✅ 2차 fallback: 단순 텍스트 메시지
+    is_urgent = form_data.get("긴급", False)
+
+    if is_urgent:
+        alert_header = "🚨*[긴급] 장애가 접수되었습니다!*🚨"
+        alert_bar = "━━━━━━━━━━━━🔥━━━━━━━━━━━━"
+    else:
+        alert_header = "⚙️ *[일반] 장애가 접수되었습니다!*"
+        alert_bar = "━━━━━━━━━━━━🔵━━━━━━━━━━━━"
     text_message = {
         "text": (
-            f"🚨 *981Park 장애 접수*\n"
-            f"━━━━━━━━━━━━━━━\n"
+            f"{alert_header}\n"
+            f"{alert_bar}\n"
             f"👤 작성자: {form_data.get('작성자', '-')}\n"
-            f"📍 포지션: {form_data.get('포지션', '-')} → {form_data.get('위치', '-')}\n"
-            f"⚙️ 설비명: {form_data.get('설비명', '-')} → {form_data.get('세부장치', '-')}\n"
+            f"📍 포지션: {form_data.get('포지션', '-')}\n"
+            f"🚩 위치: {form_data.get('위치', '-')}\n"
+            f"⚙️ 설비명: {form_data.get('설비명', '-')}\n"
+            f"⚙️ 세부장치: {form_data.get('세부장치', '-')}\n"
             f"🚨 장애유형: {form_data.get('장애유형', '-')}\n"
             f"📝 내용: {form_data.get('장애내용', '-')}\n"
             f"🕒 접수시각: {formatted_time}\n"
-            f"━━━━━━━━━━━━━━━\n"
-            f"📊 [981파크 장애관리 → 접수내용] 시트 자동 기록 완료"
+            f"{alert_bar}\n"
         )
     }
 
