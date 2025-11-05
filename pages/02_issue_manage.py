@@ -167,7 +167,6 @@ if not filtered.empty:
 
         st.markdown("---")
 
-
         colA, colB = st.columns(2)
 
         with colA:
@@ -187,18 +186,26 @@ if not filtered.empty:
 
         # ✅ 점검 시작
         with col_btn1:
-            if st.button("🚧 점검 시작", use_container_width=True):
+            if st.button("🚧 장애 접수", use_container_width=True):
                 try:
                     ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
-                    # 해당 행 찾기
-                    row_index = df.index[df["날짜"] == issue["날짜"]].tolist()[
-                        0] + 2  # header offset
-                    ws.update_cell(row_index, 10, "점검중")   # J열 접수처리
-                    ws.update_cell(row_index, 12, 담당자)     # L열 점검자
-                    ws.update_cell(row_index, 11, 선택포지션)  # K열 장애등록
-                    ws.update_cell(row_index, 15, "장애 등록")  # O열 장애관리
-                    st.success(f"✅ 점검중으로 변경 및 {선택포지션} 시트 등록 완료")
-                    st.rerun()
+
+                    # 행 찾기 (날짜 대신 고유 키 매칭)
+                    match = df[
+                        (df["작성자"] == issue["작성자"]) &
+                        (df["장애내용"] == issue["장애내용"]) &
+                        (df["설비명"] == issue["설비명"])
+                    ]
+                    
+                    if match.empty:
+                        st.error("⚠️ 해당 장애를 시트에서 찾을 수 없습니다.")
+                    else:
+                        row_index = match.index[0] + 2  # 헤더 offset
+                        ws.update_cell(row_index, 10, "점검중")   # J열 접수처리
+                        ws.update_cell(row_index, 12, 담당자)     # L열 점검자
+                        ws.update_cell(row_index, 15, "장애 등록")  # O열 장애관리
+                        st.success(f"✅ '{issue['설비명']}' 장애가 점검중으로 변경되었습니다.")
+                        st.rerun()
                 except Exception as e:
                     st.error(f"❌ 점검 시작 중 오류: {e}")
 
