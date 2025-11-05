@@ -16,6 +16,7 @@ def send_google_chat_alert(form_data: dict):
     """Google Chat Webhook 알림 (981Park 장애 접수용)"""
     import requests
     from datetime import datetime, timezone, timedelta
+    import streamlit as st
 
     WEBHOOK_URL = (
         "https://chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
@@ -26,19 +27,19 @@ def send_google_chat_alert(form_data: dict):
     now_kst = datetime.now(timezone(timedelta(hours=9)))
     formatted_time = now_kst.strftime("%Y-%m-%d %H:%M")
 
-    # 🔥 긴급 여부 확인
+    # 긴급 여부
     is_urgent = form_data.get("긴급", False)
 
-    # 🔷 카드 헤더 색상과 타이틀 결정
+    # 카드 헤더 설정
     if is_urgent:
-        header_color = "#D93025"  # 붉은색
+        header_color = "#D93025"
         header_title = "🔥 긴급 장애 접수"
     else:
-        header_color = "#1A73E8"  # 파란색
+        header_color = "#1A73E8"
         header_title = "📋 일반 장애 접수"
 
-    # ✅ Google Chat 카드 메시지 포맷 (정식 카드형)
-    message = {
+    # ✅ 1차 시도: 카드 메시지
+    card_message = {
         "cardsV2": [
             {
                 "cardId": "981park-issue",
@@ -48,54 +49,41 @@ def send_google_chat_alert(form_data: dict):
                         "subtitle": f"{formatted_time}",
                         "imageUrl": "https://cdn-icons-png.flaticon.com/512/906/906343.png",
                         "imageType": "CIRCLE",
-                        "imageAltText": "Alert",
                         "backgroundColor": header_color
                     },
                     "sections": [
                         {
                             "widgets": [
-                                {
-                                    "decoratedText": {
-                                        "startIcon": {"knownIcon": "PERSON"},
-                                        "topLabel": "작성자",
-                                        "text": form_data.get("작성자", "-")
-                                    }
-                                },
-                                {
-                                    "decoratedText": {
-                                        "startIcon": {"knownIcon": "LOCATION_ON"},
-                                        "topLabel": "포지션 / 위치",
-                                        "text": f"{form_data.get('포지션', '-')} → {form_data.get('위치', '-')}"
-                                    }
-                                },
-                                {
-                                    "decoratedText": {
-                                        "startIcon": {"knownIcon": "BUILD"},
-                                        "topLabel": "설비명 / 세부기기",
-                                        "text": f"{form_data.get('설비명', '-')} → {form_data.get('세부장치', '-')}"
-                                    }
-                                },
-                                {
-                                    "decoratedText": {
-                                        "startIcon": {"knownIcon": "WARNING"},
-                                        "topLabel": "장애유형",
-                                        "text": form_data.get("장애유형", "-")
-                                    }
-                                },
-                                {
-                                    "decoratedText": {
-                                        "startIcon": {"knownIcon": "DESCRIPTION"},
-                                        "topLabel": "장애내용",
-                                        "text": form_data.get("장애내용", "-")
-                                    }
-                                },
-                                {
-                                    "decoratedText": {
-                                        "startIcon": {"knownIcon": "CLOCK"},
-                                        "topLabel": "접수시각 (KST)",
-                                        "text": formatted_time
-                                    }
-                                }
+                                {"decoratedText": {
+                                    "startIcon": {"knownIcon": "PERSON"},
+                                    "topLabel": "작성자",
+                                    "text": form_data.get("작성자", "-")
+                                }},
+                                {"decoratedText": {
+                                    "startIcon": {"knownIcon": "LOCATION_ON"},
+                                    "topLabel": "포지션 / 위치",
+                                    "text": f"{form_data.get('포지션', '-')} → {form_data.get('위치', '-')}"
+                                }},
+                                {"decoratedText": {
+                                    "startIcon": {"knownIcon": "BUILD"},
+                                    "topLabel": "설비명 / 세부기기",
+                                    "text": f"{form_data.get('설비명', '-')} → {form_data.get('세부장치', '-')}"
+                                }},
+                                {"decoratedText": {
+                                    "startIcon": {"knownIcon": "WARNING"},
+                                    "topLabel": "장애유형",
+                                    "text": form_data.get("장애유형", "-")
+                                }},
+                                {"decoratedText": {
+                                    "startIcon": {"knownIcon": "DESCRIPTION"},
+                                    "topLabel": "장애내용",
+                                    "text": form_data.get("장애내용", "-")
+                                }},
+                                {"decoratedText": {
+                                    "startIcon": {"knownIcon": "CLOCK"},
+                                    "topLabel": "접수시각 (KST)",
+                                    "text": formatted_time
+                                }},
                             ]
                         }
                     ]
@@ -104,14 +92,44 @@ def send_google_chat_alert(form_data: dict):
         ]
     }
 
+    # ✅ 2차 fallback: 단순 텍스트 메시지
+    text_message = {
+        "text": (
+            f"🚨 *981Park 장애 접수*\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"👤 작성자: {form_data.get('작성자', '-')}\n"
+            f"📍 포지션: {form_data.get('포지션', '-')} → {form_data.get('위치', '-')}\n"
+            f"⚙️ 설비명: {form_data.get('설비명', '-')} → {form_data.get('세부장치', '-')}\n"
+            f"🚨 장애유형: {form_data.get('장애유형', '-')}\n"
+            f"📝 내용: {form_data.get('장애내용', '-')}\n"
+            f"🕒 접수시각: {formatted_time}\n"
+            f"━━━━━━━━━━━━━━━\n"
+            f"📊 [981파크 장애관리 → 접수내용] 시트 자동 기록 완료"
+        )
+    }
+
     try:
-        resp = requests.post(WEBHOOK_URL, json=message, timeout=10)
-        if resp.status_code == 200:
-            print("✅ Google Chat 알림 전송 성공")
+        # 1️⃣ 카드형 메시지 전송
+        resp = requests.post(WEBHOOK_URL, json=card_message, timeout=10)
+        st.write("📡 Webhook 응답 코드:", resp.status_code)
+        st.write("📩 Webhook 응답 내용:", resp.text)
+
+        # 2️⃣ 실패 시 fallback
+        if resp.status_code != 200:
+            st.warning("⚠️ 카드 전송 실패 → 텍스트 메시지로 대체 전송 중...")
+            resp_fallback = requests.post(
+                WEBHOOK_URL, json=text_message, timeout=10)
+            st.write("📩 fallback 응답:", resp_fallback.text)
+
+            if resp_fallback.status_code == 200:
+                st.toast("✅ Google Chat 알림 (텍스트) 전송 완료", icon="💬")
+            else:
+                st.error(f"❌ Google Chat 알림 실패: {resp_fallback.text}")
         else:
-            print(f"🚨 Webhook 실패: {resp.status_code} / {resp.text}")
+            st.toast("✅ Google Chat 알림 (카드) 전송 완료", icon="💬")
+
     except Exception as e:
-        print(f"❌ Webhook 전송 중 오류: {e}")
+        st.error(f"❌ Webhook 전송 중 오류: {e}")
 
 
 st.markdown("""
