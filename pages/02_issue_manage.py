@@ -39,209 +39,120 @@ st.title("🧰 981Park 장애 처리")
 # 접수내용 시트 데이터 로드
 # ─────────────────────────────────────────────
 
+# ─────────────────────────────────────────────
+# 📋 데이터 로드
+# ─────────────────────────────────────────────
+
 
 @st.cache_data(ttl=30)
 def load_issue_log() -> pd.DataFrame:
     """981파크 장애관리 > 접수내용 시트 전체 로드"""
     ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
     data = ws.get_all_values()
+
     if not data or len(data) < 2:
         return pd.DataFrame()
-    df = pd.DataFrame(data[1:], columns=data[0])
 
-    # 날짜 변환
+    df = pd.DataFrame(data[1:], columns=data[0])
     if "날짜" in df.columns:
         df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
     return df
 
 
-# ✅ 1️⃣ 데이터 먼저 로드
-df = load_issue_log()
+# ─────────────────────────────────────────────
+# 📊 메인 UI
+# ─────────────────────────────────────────────
+st.title("🧰 981Park 장애 처리")
 
+df = load_issue_log()
 if df.empty:
     st.warning("⚠️ 접수내용 시트에 데이터가 없습니다.")
     st.stop()
 
-# ✅ 2️⃣ 포지션 목록 자동 구성
-position_list = ["전체"]
-if "포지션" in df.columns:
-    position_list += sorted(df["포지션"].dropna().unique().tolist())
-
-# ✅ 3️⃣ 필터 UI
-col1, col2, col3 = st.columns([1.2, 1, 0.6])
+# 필터 구성
+col1, col2, col3 = st.columns([1.3, 1, 0.6])
 with col1:
-    selected_position = st.selectbox("📍 포지션 선택", position_list)
+    positions = ["전체"] + sorted(df["포지션"].dropna().unique().tolist())
+    selected_position = st.selectbox("📍 포지션", positions)
 with col2:
     selected_status = st.selectbox("📋 상태", ["전체", "접수중", "점검중", "완료"])
 with col3:
     refresh = st.button("🔄 새로고침")
 
-st.markdown("---")
-
-
-# ─────────────────────────────────────────────
-# 접수내용 시트 데이터 로드
-# ─────────────────────────────────────────────
-
-
-@st.cache_data(ttl=30)
-def load_issue_log() -> pd.DataFrame:
-    """981파크 장애관리 > 접수내용 시트 전체 로드"""
-    ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
-    data = ws.get_all_values()
-    if not data or len(data) < 2:
-        return pd.DataFrame()
-    df = pd.DataFrame(data[1:], columns=data[0])
-
-    # 날짜 변환
-    if "날짜" in df.columns:
-        df["날짜"] = pd.to_datetime(df["날짜"], format="%Y-%m-%d", errors="coerce")
-    return df
-
-
-# ─────────────────────────────────────────────
-# 데이터 표시
-# ─────────────────────────────────────────────
-df = load_issue_log()
-
-if df.empty:
-    st.warning("⚠️ 접수내용 시트에 데이터가 없습니다.")
-    st.stop()
-
-# 포지션 / 상태 필터 적용
+# 필터 적용
 filtered = df.copy()
-
-if selected_position != "전체" and "포지션" in filtered.columns:
+if selected_position != "전체":
     filtered = filtered[filtered["포지션"] == selected_position]
-
-if selected_status != "전체" and "접수처리" in filtered.columns:
+if selected_status != "전체":
     filtered = filtered[filtered["접수처리"] == selected_status]
 
-# 최신순 정렬
-if "날짜" in filtered.columns:
-    filtered = filtered.sort_values("날짜", ascending=False)
+filtered = filtered.sort_values("날짜", ascending=False)
 
-# 표시 컬럼만 선택
-display_cols = [
-    "날짜", "작성자", "포지션", "위치", "설비명",
-    "세부기기", "장애내용", "접수처리", "점검자"
-]
-existing_cols = [c for c in display_cols if c in filtered.columns]
+# 표시 컬럼
+cols_to_show = ["날짜", "작성자", "포지션", "위치", "설비명", "세부기기", "장애내용", "접수처리", "점검자"]
+filtered = filtered[[c for c in cols_to_show if c in filtered.columns]]
 
+st.markdown("---")
 st.subheader(f"📋 장애 목록 ({len(filtered)}건)")
-st.dataframe(filtered[existing_cols], use_container_width=True)
+st.caption("원하는 행을 클릭하면 상세 접수창이 팝업됩니다.")
 
 # ─────────────────────────────────────────────
-# 3️⃣ 상세 패널 (행 선택 및 처리)
+# 📋 인터랙티브 목록 (data_editor 기반)
 # ─────────────────────────────────────────────
+selected_issue = st.data_editor(
+    filtered,
+    hide_index=True,
+    use_container_width=True,
+    disabled=True,
+    key="issue_table",
+)
 
-# Streamlit 1.50 기준: st.dataframe에는 on_click 이벤트 없음 → selectbox로 행 선택 구현
+# ─────────────────────────────────────────────
+# 🧾 팝업 — 장애 접수 처리
+# ─────────────────────────────────────────────
 if not filtered.empty:
-    st.markdown("### 🧾 장애 상세 처리")
-    row_labels = [
-        f"{i+1}. {r['포지션']} / {r['설비명']} / {r['장애내용']} ({r['접수처리']})"
-        for i, r in filtered.iterrows()
-    ]
-    selected_row = st.selectbox("처리할 장애 선택", ["선택 안 함"] + row_labels, index=0)
-
-    if selected_row != "선택 안 함":
+    selected_index = st.session_state.get("issue_table", None)
+    if selected_index:
         try:
-            # 선택된 라벨의 실제 텍스트 추출
-            selected_label = selected_row.split(". ", 1)[1]
+            issue = filtered.iloc[selected_index["edited_rows"].keys()[
+                0]]  # 첫 번째 클릭한 행
 
-            # 라벨 내용(포지션/설비명/장애내용)으로 매칭
-            issue = None
-            for _, row in filtered.iterrows():
-                label = f"{row['포지션']} / {row['설비명']} / {row['장애내용']} ({row['접수처리']})"
-                if label == selected_label:
-                    issue = row
-                    break
+            with st.modal("🧾 장애 접수 처리"):
+                st.markdown(f"### ⚙️ {issue['설비명']} 장애 접수")
+                st.markdown(
+                    f"""
+                    **📅 날짜:** {issue.get('날짜', '')}  
+                    **📍 포지션:** {issue.get('포지션', '')}  
+                    **🏗️ 위치:** {issue.get('위치', '')}  
+                    **🧩 세부기기:** {issue.get('세부기기', '')}  
+                    **📝 장애내용:** {issue.get('장애내용', '')}
+                    """
+                )
 
-            if issue is None:
-                st.warning("⚠️ 선택한 항목이 현재 목록에 없습니다. 다시 선택해주세요.")
-                st.stop()
+                st.markdown("---")
+                담당자 = st.text_input("👷 점검자 이름", issue.get("점검자", ""))
+                if st.button("🚧 접수하기 (점검중으로 전환)", use_container_width=True):
+                    try:
+                        ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
 
-        except Exception as e:
-            st.error(f"❌ 선택 항목 처리 중 오류 발생: {e}")
-            st.stop()
+                        match = df[
+                            (df["작성자"] == issue["작성자"]) &
+                            (df["장애내용"] == issue["장애내용"]) &
+                            (df["설비명"] == issue["설비명"])
+                        ]
+                        if match.empty:
+                            st.error("⚠️ 해당 장애를 시트에서 찾을 수 없습니다.")
+                        else:
+                            row_index = match.index[0] + 2
+                            ws.update_cell(row_index, 10, "점검중")  # J열: 접수처리
+                            ws.update_cell(row_index, 12, 담당자)    # L열: 점검자
+                            ws.update_cell(row_index, 15, "장애 등록")  # O열: 장애관리
+                            st.success("✅ 장애가 점검중 상태로 변경되었습니다.")
+                            st.rerun()
+                    except Exception as e:
+                        st.error(f"❌ 접수 처리 중 오류: {e}")
 
-        st.markdown("---")
+        except Exception:
+            pass
 
-        colA, colB = st.columns(2)
-
-        with colA:
-            담당자 = st.text_input("👷 점검자 이름", issue.get("점검자", ""))
-            선택포지션 = st.selectbox(
-                "📍 포지션 시트 선택",
-                ["선택 안 함", "Audio/Video", "RACE",
-                    "LAB", "운영설비", "충전설비", "정비고", "기타"]
-            )
-
-        with colB:
-            점검내용 = st.text_area("🧰 점검내용", height=120)
-            비고 = st.text_area("📝 비고 (선택)", height=80)
-
-        st.markdown("---")
-        col_btn1, col_btn2, col_btn3 = st.columns(3)
-
-        # ✅ 점검 시작
-        with col_btn1:
-            if st.button("🚧 장애 접수", use_container_width=True):
-                try:
-                    ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
-
-                    # 행 찾기 (날짜 대신 고유 키 매칭)
-                    match = df[
-                        (df["작성자"] == issue["작성자"]) &
-                        (df["장애내용"] == issue["장애내용"]) &
-                        (df["설비명"] == issue["설비명"])
-                    ]
-                    
-                    if match.empty:
-                        st.error("⚠️ 해당 장애를 시트에서 찾을 수 없습니다.")
-                    else:
-                        row_index = match.index[0] + 2  # 헤더 offset
-                        ws.update_cell(row_index, 10, "점검중")   # J열 접수처리
-                        ws.update_cell(row_index, 12, 담당자)     # L열 점검자
-                        ws.update_cell(row_index, 15, "장애 등록")  # O열 장애관리
-                        st.success(f"✅ '{issue['설비명']}' 장애가 점검중으로 변경되었습니다.")
-                        st.rerun()
-                except Exception as e:
-                    st.error(f"❌ 점검 시작 중 오류: {e}")
-
-        # ✅ 완료 처리
-        with col_btn2:
-            if st.button("✅ 완료 처리", use_container_width=True):
-                try:
-                    ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
-                    row_index = df.index[df["날짜"] == issue["날짜"]].tolist()[
-                        0] + 2
-                    now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-                    ws.update_cell(row_index, 10, "완료")     # J열
-                    ws.update_cell(row_index, 13, now)        # M열
-                    ws.update_cell(row_index, 14, 점검내용)    # N열
-                    ws.update_cell(row_index, 15, "장애 처리")  # O열
-                    ws.update_cell(row_index, 17, "종결")     # Q열
-                    st.success("✅ 장애 완료 처리 및 종결 완료")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ 완료 처리 중 오류: {e}")
-
-        # ✅ 간단 완료
-        with col_btn3:
-            if st.button("⚡ 간단 완료 (포지션 이동 없음)", use_container_width=True):
-                try:
-                    ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
-                    row_index = df.index[df["날짜"] == issue["날짜"]].tolist()[
-                        0] + 2
-                    now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
-                    ws.update_cell(row_index, 10, "완료")      # 접수처리
-                    ws.update_cell(row_index, 14, 점검내용)    # 점검내용
-                    ws.update_cell(row_index, 15, "장애 처리")  # 장애관리
-                    ws.update_cell(row_index, 17, "종결")      # 종결
-                    st.success("⚡ 간단 장애 완료 및 종결 처리됨")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ 간단 완료 중 오류: {e}")
-
-st.caption("※ ‘접수중’ 또는 ‘점검중’ 상태의 건만 처리 가능합니다.")
+st.caption("© 2025 981Park Technical Support Team — 장애 처리 시스템")

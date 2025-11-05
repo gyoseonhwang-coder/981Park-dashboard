@@ -106,14 +106,14 @@ def send_google_chat_alert(form_data: dict):
     text_message = {
         "text": (
             f"{alert_header}\n"
-            f"👤 작성자: {form_data.get('작성자', '-')}\n"
-            f"📍 포지션: {form_data.get('포지션', '-')}\n"
-            f"🚩 위치: {form_data.get('위치', '-')}\n"
-            f"⚙️ 설비명: {form_data.get('설비명', '-')}\n"
-            f"⚙️ 세부장치: {form_data.get('세부장치', '-')}\n"
-            f"🚨 장애유형: {form_data.get('장애유형', '-')}\n"
-            f"📝 내용: {form_data.get('장애내용', '-')}\n"
-            f"🕒 접수시각: {formatted_time}\n"
+            f"🔸 작성자: {form_data.get('작성자', '-')}\n"
+            f"🔸 포지션: {form_data.get('포지션', '-')}\n"
+            f"🔸 위치: {form_data.get('위치', '-')}\n"
+            f"🔸 설비명: {form_data.get('설비명', '-')}\n"
+            f"🔸 세부장치: {form_data.get('세부장치', '-')}\n"
+            f"🔸 장애유형: {form_data.get('장애유형', '-')}\n"
+            f"🔸 내용: {form_data.get('장애내용', '-')}\n"
+            f"🔸 접수시각: {formatted_time}\n"
         )
     }
 
