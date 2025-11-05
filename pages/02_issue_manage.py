@@ -166,16 +166,7 @@ if not filtered.empty:
             st.stop()
 
         st.markdown("---")
-        st.markdown(f"#### 🧩 선택된 장애 ({issue['포지션']})")
-        st.write(f"**📅 날짜:** {issue.get('날짜', '')}")
-        st.write(f"**👤 작성자:** {issue.get('작성자', '')}")
-        st.write(f"**📍 위치:** {issue.get('위치', '')}")
-        st.write(f"**⚙️ 설비명:** {issue.get('설비명', '')}")
-        st.write(f"**🧩 세부기기:** {issue.get('세부기기', '')}")
-        st.write(f"**📝 장애내용:** {issue.get('장애내용', '')}")
-        st.write(f"**📋 현재상태:** {issue.get('접수처리', '')}")
 
-        st.markdown("---")
 
         colA, colB = st.columns(2)
 
