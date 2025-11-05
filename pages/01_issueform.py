@@ -117,29 +117,18 @@ def send_google_chat_alert(form_data: dict):
         )
     }
 
+    message = {}
     try:
-        # 1️⃣ 카드형 메시지 전송
-        resp = requests.post(WEBHOOK_URL, json=card_message, timeout=10)
-        st.write("📡 Webhook 응답 코드:", resp.status_code)
-        st.write("📩 Webhook 응답 내용:", resp.text)
-
-        # 2️⃣ 실패 시 fallback
-        if resp.status_code != 200:
-            st.warning("⚠️ 카드 전송 실패 → 텍스트 메시지로 대체 전송 중...")
-            resp_fallback = requests.post(
-                WEBHOOK_URL, json=text_message, timeout=10)
-            st.write("📩 fallback 응답:", resp_fallback.text)
-
-            if resp_fallback.status_code == 200:
-                st.toast("✅ Google Chat 알림 (텍스트) 전송 완료", icon="💬")
-            else:
-                st.error(f"❌ Google Chat 알림 실패: {resp_fallback.text}")
+        resp = requests.post(WEBHOOK_URL, json=message, timeout=10)
+        if resp.status_code == 200:
+            # 성공 로그 (콘솔에만)
+            print("✅ Google Chat 알림 전송 성공")
         else:
-            st.toast("✅ Google Chat 알림 (카드) 전송 완료", icon="💬")
-
+            # 실패 로그 (웹엔 미노출)
+            print(f"🚨 Webhook 실패: {resp.status_code} / {resp.text}")
     except Exception as e:
-        st.error(f"❌ Webhook 전송 중 오류: {e}")
-
+        # 예외 발생 시 콘솔에만 출력
+        print(f"❌ Webhook 전송 중 오류: {e}")
 
 st.markdown("""
 <style>
