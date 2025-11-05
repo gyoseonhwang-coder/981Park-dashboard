@@ -268,11 +268,6 @@ with col_form:
     with col_btn1:
         submit = st.button("✅ 장애 접수 등록", use_container_width=True)
 
-    # 버튼 영역
-    col_btn1, col_btn2 = st.columns(2)
-    with col_btn1:
-        submit = st.button("✅ 장애 접수 등록", use_container_width=True)
-
     # 전송 로직
     if submit:
         if not (st.session_state.position and st.session_state.location and
