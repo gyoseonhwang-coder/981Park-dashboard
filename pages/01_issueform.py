@@ -101,14 +101,11 @@ def send_google_chat_alert(form_data: dict):
 
     if is_urgent:
         alert_header = "🚨*[긴급] 장애가 접수되었습니다!*"
-        alert_bar = "━━━━━━━🔥━━━━━━━"
     else:
         alert_header = "⚙️ *[일반] 장애가 접수되었습니다!*"
-        alert_bar = "━━━━━━━🔵━━━━━━━"
     text_message = {
         "text": (
             f"{alert_header}\n"
-            f"{alert_bar}\n"
             f"👤 작성자: {form_data.get('작성자', '-')}\n"
             f"📍 포지션: {form_data.get('포지션', '-')}\n"
             f"🚩 위치: {form_data.get('위치', '-')}\n"
@@ -117,7 +114,6 @@ def send_google_chat_alert(form_data: dict):
             f"🚨 장애유형: {form_data.get('장애유형', '-')}\n"
             f"📝 내용: {form_data.get('장애내용', '-')}\n"
             f"🕒 접수시각: {formatted_time}\n"
-            f"{alert_bar}\n"
         )
     }
 
