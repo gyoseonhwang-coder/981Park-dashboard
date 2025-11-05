@@ -36,7 +36,6 @@ SHEET_LOG = "접수내용"
 # 데이터 로드
 # ─────────────────────────────────────────────
 
-
 @st.cache_data(ttl=30)
 def load_issue_log() -> pd.DataFrame:
     """981파크 장애관리 > 접수내용 시트 전체 로드"""
@@ -47,16 +46,46 @@ def load_issue_log() -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(data[1:], columns=data[0])
+
+    # ✅ 날짜 공백 보정
     if "날짜" in df.columns:
-        df["날짜"] = df["날짜"].apply(lambda x: x if x.strip() != "" else "—")
+        df["날짜"] = df["날짜"].apply(lambda x: x if str(x).strip() != "" else "—")
+
+    # ✅ 중복 컬럼명 자동 정리 (빈 이름 포함)
+    df.columns = [
+        c if str(c).strip() != "" else f"Unnamed_{i}"
+        for i, c in enumerate(df.columns)
+    ]
+
+    # ✅ 동일 이름 중복 고유화 (pandas 2.x 완전 호환)
+    def make_unique_columns(columns):
+        seen = {}
+        new_cols = []
+        for col in columns:
+            if col in seen:
+                seen[col] += 1
+                new_cols.append(f"{col}.{seen[col]}")
+            else:
+                seen[col] = 0
+                new_cols.append(col)
+        return new_cols
+
+    df.columns = make_unique_columns(df.columns)
 
     return df
-
 
 # ─────────────────────────────────────────────
 # 메인 UI
 # ─────────────────────────────────────────────
 st.title("🧰 981Park 장애 처리")
+
+# ✅ Session State 초기화 (이게 꼭 필요)
+if "popup_issue" not in st.session_state:
+    st.session_state.popup_issue = None
+
+if "selected_issue" not in st.session_state:
+    st.session_state.selected_issue = None
+
 st.subheader("🧾 조치 필요 목록 (미조치/점검중)")
 
 df = load_issue_log()
@@ -64,23 +93,35 @@ if df.empty:
     st.warning("⚠️ 접수내용 시트에 데이터가 없습니다.")
     st.stop()
 
-# 상태 컬럼 표준화
-if "접수처리" in df.columns:
+# ✅ 상태 컬럼 표준화 (더 안전하게)
+if "상태" not in df.columns and "접수처리" in df.columns:
     df["상태"] = df["접수처리"].replace({
         "접수중": "미조치(접수중)",
         "점검중": "점검중",
         "완료": "완료"
     })
+elif "상태" in df.columns:
+    df["상태"] = df["상태"].replace({
+        "접수중": "미조치(접수중)",
+        "점검중": "점검중",
+        "완료": "완료"
+    })
+
 
 pending = df[df["상태"].isin(["미조치(접수중)", "점검중"])].copy()
 pending = pending.sort_values("날짜", ascending=False)
+
+st.write("🧩 [DEBUG] df.shape:", df.shape)
+st.write("🧩 [DEBUG] pending.shape:", pending.shape)
+st.write("🧩 [DEBUG] df.columns:", df.columns.tolist())
 
 cols_show = [c for c in ["날짜", "포지션", "위치", "설비명",
                          "장애내용", "상태", "점검자"] if c in pending.columns]
 
 if pending.empty:
-    st.info("✅ 현재 조치가 필요한 장애가 없습니다.")
+    st.warning("⚠️ pending이 비어 있습니다. ‘상태’ 컬럼 또는 ‘접수처리’ 컬럼 확인 필요.")
     st.stop()
+
 
 # ─────────────────────────────────────────────
 # AgGrid 테이블 표시 (행 클릭 + 더블클릭)
@@ -102,23 +143,26 @@ gb.configure_pagination(paginationAutoPageSize=True)
 grid_options = gb.build()
 
 grid_response = AgGrid(
-    pending[cols_show],
+    pending,
     gridOptions=grid_options,
-    update_mode=GridUpdateMode.SELECTION_CHANGED,
+    update_mode=GridUpdateMode.SELECTION_CHANGED | GridUpdateMode.MODEL_CHANGED,
     enable_enterprise_modules=False,
     theme="balham",
-    height=320,
+    height=340,
     fit_columns_on_grid_load=True,
 )
 
+
 st.caption("🔍 행을 더블클릭하면 상세 접수/처리 팝업이 열립니다.")
 
-# 선택된 행 처리
+# ✅ 선택된 행 처리 (안전 버전)
 selected_rows = grid_response.get("selected_rows", [])
-if selected_rows:
+
+if isinstance(selected_rows, list) and len(selected_rows) > 0:
+    st.session_state.selected_issue = selected_rows[0]
     st.session_state.popup_issue = selected_rows[0]
 else:
-    st.session_state.popup_issue = None
+    st.session_state.selected_issue = None
 
 # ─────────────────────────────────────────────
 # 팝업 스타일 (오버레이 카드)
