@@ -19,9 +19,9 @@ def send_google_chat_alert(form_data: dict):
     import streamlit as st
 
     WEBHOOK_URL = (
-        "https://chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
+        "https://chat.googleapis.com/v1/spaces/AAAA--bBVFA/messages"
         "?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI"
-        "&token=qpitTslB-dlzAaxy3nqBCSfSxOcjm1ly6vYWDTaPRB8"
+        "&token=KTqHuz3sZhnrpJXkFyo8__ZNNytvsZehQoRcluPCzVY"
     )
 
     now_kst = datetime.now(timezone(timedelta(hours=9)))
