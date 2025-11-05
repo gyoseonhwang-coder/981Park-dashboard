@@ -100,11 +100,11 @@ def send_google_chat_alert(form_data: dict):
     is_urgent = form_data.get("긴급", False)
 
     if is_urgent:
-        alert_header = "🚨*[긴급] 장애가 접수되었습니다!*🚨"
-        alert_bar = "━━━━━🔥━━━━━"
+        alert_header = "🚨*[긴급] 장애가 접수되었습니다!*"
+        alert_bar = "━━━━━━━🔥━━━━━━━"
     else:
         alert_header = "⚙️ *[일반] 장애가 접수되었습니다!*"
-        alert_bar = "━━━━━🔵━━━━━"
+        alert_bar = "━━━━━━━🔵━━━━━━━"
     text_message = {
         "text": (
             f"{alert_header}\n"
