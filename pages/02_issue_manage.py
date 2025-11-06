@@ -102,35 +102,48 @@ if pending.empty:
     st.stop()
 
 # ─────────────────────────────────────────────
-# AgGrid 표시
+# AgGrid 표시 (체크박스 선택 시 자동 rerun)
 # ─────────────────────────────────────────────
-gb = GridOptionsBuilder.from_dataframe(pending[cols_show])
-gb.configure_selection("single", use_checkbox=True)
+grid_data = pending[cols_show].copy()
+
+gb = GridOptionsBuilder.from_dataframe(grid_data)
+gb.configure_selection(selection_mode="single", use_checkbox=True)
 gb.configure_pagination(paginationAutoPageSize=True)
 grid_options = gb.build()
 
 st.caption("☑️ 장애를 선택하면 아래에 상세 카드가 표시됩니다.")
+
+# ✅ AgGrid 출력 (selection + manual rerun 유도)
 grid_response = AgGrid(
-    pending[cols_show],
+    grid_data,
     gridOptions=grid_options,
     update_mode=GridUpdateMode.SELECTION_CHANGED,
     enable_enterprise_modules=False,
     theme="balham",
-    height=350,
+    height=340,
     fit_columns_on_grid_load=True,
+    key="issue_grid"
 )
+
+# ✅ 선택된 행 감지
+selected_rows = grid_response["selected_rows"]
+
+# ✅ 선택된 행이 있을 때 바로 rerun (명시적 트리거)
+if selected_rows:
+    st.session_state["selected_issue"] = selected_rows[0]
+else:
+    st.session_state["selected_issue"] = None
 
 # ─────────────────────────────────────────────
 # 선택된 장애 상세 카드 표시
 # ─────────────────────────────────────────────
-selected_rows = grid_response.get("selected_rows", [])
-if isinstance(selected_rows, list) and len(selected_rows) > 0:
-    issue = selected_rows[0]
+if st.session_state["selected_issue"] is not None:
+    issue = st.session_state["selected_issue"]
 
     st.markdown("---")
     st.markdown(f"### 🧩 선택된 장애 — `{issue.get('설비명', '-')}`")
 
-    # 카드형 레이아웃
+    # 카드 스타일
     st.markdown("""
     <style>
     .card {
@@ -155,7 +168,7 @@ if isinstance(selected_rows, list) and len(selected_rows) > 0:
     </div>
     """, unsafe_allow_html=True)
 
-    st.markdown("### 👷 처리 정보 입력")
+    st.markdown("### 👷 조치 내용 입력")
     담당자 = st.text_input("👷 점검자 이름", issue.get("점검자", ""))
     포지션_이동 = st.selectbox(
         "📍 포지션 시트 이동 (선택 안 함 가능)",
@@ -163,6 +176,7 @@ if isinstance(selected_rows, list) and len(selected_rows) > 0:
          "LAB", "운영설비", "충전설비", "정비고", "기타"]
     )
 
+    # 상태별 버튼
     if issue.get("상태") == "미조치(접수중)":
         if st.button("🚧 점검 시작 (접수중 → 점검중)", use_container_width=True):
             try:
@@ -180,7 +194,9 @@ if isinstance(selected_rows, list) and len(selected_rows) > 0:
                     ws.update_cell(row_index, 12, 담당자)
                     ws.update_cell(row_index, 11, 포지션_이동 if 포지션_이동 != "선택 안 함" else "")
                     ws.update_cell(row_index, 15, "장애 등록")
+
                     st.success(f"✅ '{issue['설비명']}' 장애가 점검중으로 변경되었습니다.")
+                    st.session_state["selected_issue"] = None
                     st.rerun()
             except Exception as e:
                 st.error(f"❌ 점검 시작 중 오류 발생: {e}")
@@ -196,7 +212,7 @@ if isinstance(selected_rows, list) and len(selected_rows) > 0:
                     (df["설비명"] == issue["설비명"])
                 ]
                 if match.empty:
-                    st.error("⚠️ 해당 장애를 시트에서 찾을 수 없습니다.")
+                    st.error("⚠️ 시트에서 해당 장애를 찾을 수 없습니다.")
                 else:
                     row_index = match.index[0] + 2
                     now = pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -205,11 +221,11 @@ if isinstance(selected_rows, list) and len(selected_rows) > 0:
                     ws.update_cell(row_index, 14, 점검내용)
                     ws.update_cell(row_index, 15, "장애 처리")
                     ws.update_cell(row_index, 17, "종결")
+
                     st.success(f"✅ '{issue['설비명']}' 장애가 완료 처리되었습니다.")
+                    st.session_state["selected_issue"] = None
                     st.rerun()
             except Exception as e:
-                st.error(f"❌ 완료 처리 중 오류 발생: {e}")
+                st.error(f"❌ 완료 처리 중 오류: {e}")
 else:
     st.info("📋 왼쪽 체크박스를 클릭하여 장애를 선택하세요.")
-
-st.caption("© 2025 981Park Technical Support Team — 장애 처리 시스템")
