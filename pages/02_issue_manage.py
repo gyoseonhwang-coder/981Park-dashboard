@@ -90,14 +90,42 @@ st.dataframe(pending[cols_show], use_container_width=True, height=320)
 st.divider()
 
 # ─────────────────────────────────────────────
-# 장애 선택 UI
+# 🔹 처리할 장애 선택 (단일 텍스트 + 스타일 개선)
 # ─────────────────────────────────────────────
+
+# Selectbox 내부 텍스트 줄바꿈 허용 (장애 내용이 짤리지 않도록)
+st.markdown("""
+<style>
+/* selectbox 내부 줄바꿈 및 스타일 개선 */
+div[data-baseweb="select"] span {
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    line-height: 1.5em !important;
+}
+/* 라벨 텍스트 (📋 처리할 장애 선택) 크기 확대 */
+div.stSelectbox > label > div {
+    font-size: 18px !important;
+    font-weight: 700 !important;
+    color: #222 !important;
+    margin-bottom: 6px !important;
+}
+</style>
+""", unsafe_allow_html=True)
+
+# 장애 목록 표시
 row_labels = [
-    f"[{r['상태']}] {r['설비명']} - {r['장애내용'][:20]}..."
+    f"[{r['상태']}] {r['설비명']} — {r['장애내용']}"
     for _, r in pending.iterrows()
 ]
-selected_label = st.selectbox("🔹 처리할 장애 선택", ["선택 안 함"] + row_labels)
 
+# 선택 박스 표시 (라벨 1개만 사용)
+selected_label = st.selectbox(
+    "📋 처리할 장애 선택",
+    ["선택 안 함"] + row_labels,
+    index=0,
+)
+
+# 선택된 장애 표시
 if selected_label != "선택 안 함":
     selected_index = row_labels.index(selected_label)
     issue = pending.iloc[selected_index]
@@ -105,7 +133,9 @@ if selected_label != "선택 안 함":
     # 카드형 UI
     st.markdown("---")
     st.markdown(
-        f"### 🧩 선택된 장애 — <span style='color:#16a34a;font-weight:600'>{issue.get('포지션', '-')} {issue.get('설비명', '-')}</span>", unsafe_allow_html=True)
+        f"### 🧩 선택된 장애 — <span style='color:#16a34a;font-weight:600'>{issue.get('포지션', '-')} {issue.get('설비명', '-')}</span>",
+        unsafe_allow_html=True
+    )
 
     st.markdown("""
     <style>
@@ -116,6 +146,9 @@ if selected_label != "선택 안 함":
         padding: 20px;
         margin-top: 10px;
         border-left: 6px solid #2E86DE;
+    }
+    .issue-card b {
+        color: #111;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -140,6 +173,8 @@ if selected_label != "선택 안 함":
         "📍 포지션 시트로 이동 (선택 안 함 가능)",
         ["선택 안 함", "Audio/Video", "RACE", "LAB", "운영설비", "충전설비", "정비고", "기타"]
     )
+
+
 
     # 상태별 처리 버튼
     # 🚧 접수중 → 점검중
