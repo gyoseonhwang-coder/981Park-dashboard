@@ -184,29 +184,35 @@ render_kpi([
 
 st.divider()
 
+# ────────────────────────────────
+# 📅 월별 장애 접수 현황
+# ────────────────────────────────
 st.subheader("📅 월별 장애 접수 현황")
 
-now_dt = datetime.now(tz=KST)
-try:
-    current_month = now_dt.strftime("%Y년 %-m월")
-except ValueError:
-    current_month = now_dt.strftime("%Y년 %#m월")
+# ✅ 날짜 컬럼을 기반으로 'YYYY-MM' 형태의 월 컬럼 생성
+if "날짜" in df.columns:
+    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
+    df = df.dropna(subset=["날짜"])
+    df["월"] = df["날짜"].dt.strftime("%Y-%m")
 
-# ✅ 월 라벨을 시간순(오름차순)으로 정렬한 뒤
-available_months_asc = sorted(df["월"].unique(), key=_month_key)
-# 기본월 결정(없으면 가장 최신 = 마지막)
-default_month = current_month if current_month in available_months_asc else available_months_asc[-1]
+# ✅ 월 목록 정렬
+available_months = sorted(df["월"].unique())
+# 최신 월을 기본 선택
+default_index = len(available_months) - 1 if available_months else 0
 
-# ✅ 드롭다운은 최신→오래된(내림차순)으로 보여주되 기본 선택은 '기본월'
-available_months_desc = list(reversed(available_months_asc))
+# ✅ 월 선택 박스
 selected_month = st.selectbox(
-    "📆 조회할 월 선택",
-    available_months_desc,
-    index=available_months_desc.index(default_month),
+    "📅 조회할 월 선택",
+    available_months,
+    index=default_index,
+    key="month_selector"
 )
+
+# ✅ 선택된 월 데이터 필터링
 df_month = df[df["월"] == selected_month]
 m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
 
+# ✅ KPI 출력
 render_kpi([
     (f"{selected_month} 전체 접수", f"{m_total}", "c-blue"),
     ("점검중", f"{m_prog}", "c-orange"),
@@ -215,11 +221,6 @@ render_kpi([
     ("완료율", f"{m_rate:0.1f}%", "c-navy"),
 ])
 
-st.divider()
-
-today_kst = datetime.now(tz=KST).date()
-df_today = df[df["날짜"].dt.date == today_kst]
-t_total, t_prog, t_pend, t_done, t_rate = status_counts(df_today)
 
 st.divider()
 
@@ -227,39 +228,8 @@ st.divider()
 # 📊 월별 장애 접수 및 완료율 추이
 # ────────────────────────────────
 
-st.subheader("📅 월별 장애 접수 현황")
-
-now_dt = datetime.now(tz=KST)
-try:
-    current_month = now_dt.strftime("%Y년 %-m월")
-except ValueError:
-    current_month = now_dt.strftime("%Y년 %#m월")
-
-# ✅ 월 라벨을 시간순(오름차순)으로 정렬한 뒤
-available_months_asc = sorted(df["월"].unique(), key=_month_key)
-default_month = current_month if current_month in available_months_asc else available_months_asc[-1]
-
-# ✅ 드롭다운 (내림차순)
-available_months_desc = list(reversed(available_months_asc))
-selected_month = st.selectbox(
-    "📆 조회할 월 선택",
-    available_months_desc,
-    index=available_months_desc.index(default_month),
-    key="monthly_kpi_selector"
-)
-
-df_month = df[df["월"] == selected_month]
-m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
-
-render_kpi([
-    (f"{selected_month} 전체 접수", f"{m_total}", "c-blue"),
-    ("점검중", f"{m_prog}", "c-orange"),
-    ("미조치(접수중)", f"{m_pend}", "c-red"),
-    ("완료", f"{m_done}", "c-green"),
-    ("완료율", f"{m_rate:0.1f}%", "c-navy"),
-])
-
 st.divider()
+
 st.subheader("📊 월별 장애 접수 및 완료율 추이")
 
 # ✅ 월 컬럼 보정 (필수!)

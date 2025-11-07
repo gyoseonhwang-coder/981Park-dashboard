@@ -8,12 +8,65 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
 
+
 st.markdown("""
     <style>
     [data-testid="stSidebarNav"] {display: none !important;}
     section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
     </style>
 """, unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────
+# 📦 포지션 시트로 장애 이동 함수
+# ─────────────────────────────────────────────
+def move_issue_to_position(payload, gc):
+    """981파크 장애관리 - 접수내용 → 포지션 시트 이동"""
+    try:
+        SPREADSHEET_NAME = "981파크 장애관리"
+        sh = gc.open(SPREADSHEET_NAME)
+
+        position = payload.get("포지션", "").strip()
+        if not position:
+            st.warning("⚠️ 포지션 정보가 없어 포지션 시트로 이동하지 못했습니다.")
+            return
+
+        # 시트 존재 확인 (없으면 생성)
+        try:
+            target_ws = sh.worksheet(position)
+        except Exception:
+            target_ws = sh.add_worksheet(title=position, rows="500", cols="20")
+            headers = [
+                "우선순위", "날짜", "작성자", "포지션", "위치", "설비",
+                "구분", "장애유형", "장애내용", "점검자", "점검일자",
+                "점검내용", "비고", "중단설비", "완결"
+            ]
+            target_ws.append_row(headers)
+
+        # 추가할 데이터 구성
+        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        new_row = [
+            "긴급" if payload.get("긴급") else "일반",
+            now,
+            payload.get("작성자", ""),
+            payload.get("포지션", ""),
+            payload.get("위치", ""),
+            payload.get("설비명", ""),
+            payload.get("세부장치", ""),
+            payload.get("장애유형", ""),
+            payload.get("장애내용", ""),
+            payload.get("점검자", ""),
+            "", "", "", "",
+            "점검중"
+        ]
+
+        target_ws.append_row(new_row, value_input_option="USER_ENTERED")
+        st.toast(f"📤 '{position}' 시트로 자동 이동 완료", icon="✅")
+
+    except Exception as e:
+        st.error(f"❌ 포지션 시트 이동 중 오류 발생: {e}")
+
+
 
 # ─────────────────────────────────────────────
 # ⚙️ Page Setup & Auth
@@ -61,11 +114,9 @@ def load_issue_log() -> pd.DataFrame:
 
     df = pd.DataFrame(data[1:], columns=data[0])
 
-    # 날짜 정리
     if "날짜" in df.columns:
         df["날짜"] = df["날짜"].replace("", "—")
 
-    # 상태 표준화
     if "상태" not in df.columns and "접수처리" in df.columns:
         df["상태"] = df["접수처리"]
     df["상태"] = df["상태"].replace({
@@ -95,6 +146,7 @@ cols_show = [c for c in ["날짜", "포지션", "위치", "설비명", "장애�
 st.dataframe(pending[cols_show], use_container_width=True, height=320)
 
 st.divider()
+
 
 # ─────────────────────────────────────────────
 # 🎯 처리할 장애 선택
@@ -131,38 +183,11 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# 카드형 UI
-st.markdown("""
-<style>
-.issue-card {
-    background-color: #ffffff;
-    border-radius: 10px;
-    box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
-    padding: 20px;
-    margin-top: 10px;
-    border-left: 6px solid #2E86DE;
-}
-.issue-card b { color: #111; }
-</style>
-""", unsafe_allow_html=True)
-
-st.markdown(f"""
-<div class="issue-card">
-    <b>📅 날짜:</b> {issue.get('날짜', '—')}<br>
-    <b>📍 포지션:</b> {issue.get('포지션', '—')}<br>
-    <b>🏗️ 위치:</b> {issue.get('위치', '—')}<br>
-    <b>⚙️ 설비명:</b> {issue.get('설비명', '—')}<br>
-    <b>🧩 장애내용:</b> {issue.get('장애내용', '—')}<br>
-    <b>📋 현재상태:</b> {issue.get('상태', '—')}
-</div>
-""", unsafe_allow_html=True)
-
-st.divider()
 
 # ─────────────────────────────────────────────
 # 👷 조치 입력 & 상태 변경
 # ─────────────────────────────────────────────
-st.markdown("### 👷 조치 내용 입력")
+
 
 담당자 = st.text_input("👷 점검자 이름", issue.get("점검자", ""))
 포지션_이동 = st.selectbox(
@@ -170,7 +195,6 @@ st.markdown("### 👷 조치 내용 입력")
     ["선택 안 함", "Audio/Video", "RACE", "LAB", "운영설비", "충전설비", "정비고", "기타"]
 )
 
-# 시트 참조 준비
 ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_LOG)
 match = df[
     (df["작성자"] == issue.get("작성자")) &
@@ -182,7 +206,8 @@ if match.empty:
     st.error("⚠️ 해당 장애를 시트에서 찾을 수 없습니다.")
     st.stop()
 
-row_index = match.index[0] + 2  # 헤더 포함 offset
+row_index = match.index[0] + 2
+
 
 # ─────────────────────────────────────────────
 # 🚧 접수중 → 점검중
@@ -191,10 +216,21 @@ if issue.get("상태") == "미조치(접수중)":
     st.info("📩 아직 조치되지 않은 장애입니다. 점검 시작 시 아래 버튼을 클릭하세요.")
     if st.button("🚧 장애 접수 (→ 점검중)", use_container_width=True):
         try:
-            ws.update_cell(row_index, 10, "점검중")  # 접수처리
-            ws.update_cell(row_index, 12, 담당자)    # 점검자
+            ws.update_cell(row_index, 10, "점검중")
+            ws.update_cell(row_index, 12, 담당자)
             ws.update_cell(row_index, 11, 포지션_이동 if 포지션_이동 != "선택 안 함" else "")
-            ws.update_cell(row_index, 15, "장애 등록")
+            
+
+            # ✅ 포지션 시트 자동 이동
+            if 포지션_이동 != "선택 안 함":
+                ws.update_cell(row_index, 15, "장애 등록")
+
+                payload = issue.to_dict()
+                payload["점검자"] = 담당자
+                payload["포지션"] = 포지션_이동
+                move_issue_to_position(payload, gc)
+            else:
+                ws.update_cell(row_index, 15, "")
 
             st.toast(f"✅ '{issue['설비명']}' 장애가 점검중으로 변경되었습니다.", icon="⚙️")
             with st.spinner("🔄 시트 업데이트 중..."):
@@ -203,6 +239,7 @@ if issue.get("상태") == "미조치(접수중)":
             st.rerun()
         except Exception as e:
             st.error(f"❌ 장애 접수 중 오류 발생: {e}")
+
 
 # ─────────────────────────────────────────────
 # 🧰 점검중 → 완료
