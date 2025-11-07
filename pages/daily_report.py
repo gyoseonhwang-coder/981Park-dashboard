@@ -1,178 +1,91 @@
 import streamlit as st
-import pandas as pd
-import requests
-import io
-import re
-from datetime import datetime
-from zoneinfo import ZoneInfo
-from menu_ui import render_sidebar
-import sys
-import os
-from menu_ui import get_current_user, AUTHORIZED_USERS
+from streamlit_js_eval import streamlit_js_eval
 
-email, name = get_current_user()
-if email not in AUTHORIZED_USERS:
-    st.error("🚫 접근 권한이 없습니다. (기술지원 전용 페이지)")
-    st.stop()
-
-st.set_page_config(page_title="📅 Daily 현황", layout="wide")
-render_sidebar(active="Daily")
-
-# ─────────────────────────────────────────────
-# 페이지 기본 설정
-# ─────────────────────────────────────────────
-st.set_page_config(page_title="📅 Daily 현황", layout="wide")
-render_sidebar(active="Daily")
-
-# ─────────────────────────────────────────────
-# 데이터 로드 유틸리티
-# ─────────────────────────────────────────────
-KST = ZoneInfo("Asia/Seoul")
-SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
+# ─────────────────────────────
+# ✅ 허용된 이메일 목록 및 이름 매핑
+# ─────────────────────────────
+AUTHORIZED_USERS = {
+    "gyoseon.hwang@monolith.co.kr": "황교선",
+    "hyunjong.cho@monolith.co.kr": "조현종",
+    "seonghoon.kang@monolith.co.kr": "강성훈",
+}
+ALLOWED_EMAILS = list(AUTHORIZED_USERS.keys())
 
 
-def fetch_csv(url: str) -> pd.DataFrame:
-    """Google Sheets CSV 안전 로드"""
-    resp = requests.get(url, timeout=15)
-    head = resp.text.strip()[:200].lower()
-    if head.startswith("<"):
-        raise RuntimeError("CSV 대신 HTML 응답 수신 — 공유 설정을 확인하세요.")
-    resp.encoding = "utf-8"
-    raw = resp.text
-    first = raw.splitlines()[0] if raw else ""
-    sep = ";" if first.count(";") > first.count(",") else ","
-    df = pd.read_csv(io.StringIO(raw), sep=sep, engine="python")
-    df.columns = df.columns.str.replace("\n", "", regex=False).str.strip()
-    df = df.loc[:, ~df.columns.str.contains(r"^Unnamed", na=False)]
-    return df
+# ─────────────────────────────
+# ✅ 사용자 인증 (자동 로그인 + 유지)
+# ─────────────────────────────
+def get_current_user():
+    """
+    로그인 정보 확인 및 반환 (email, name)
+    - localStorage → session_state → 이메일 입력 순서
+    - 새로고침 없이 즉시 반영
+    """
+    # 1️⃣ 세션에 이미 로그인 정보가 있으면 바로 반환
+    if "user_email" in st.session_state:
+        email = st.session_state.user_email.strip().lower()
+        return email, AUTHORIZED_USERS.get(email, "게스트")
 
-
-def parse_jeju_date(val):
-    """981파크 접수내용 날짜 파서"""
-    if pd.isna(val):
-        return pd.NaT
-    s = str(val).strip().replace("오전", "AM").replace("오후", "PM")
-    s = re.sub(r"\s*\.\s*", "-", s)
-    s = re.sub(r"-+", "-", s).strip("-")
-    patterns = ["%Y-%m-%d %p %I:%M:%S",
-                "%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%y-%m-%d"]
-    for fmt in patterns:
-        try:
-            return datetime.strptime(s, fmt)
-        except Exception:
-            continue
-    if re.fullmatch(r"\d+(\.\d+)?", s):
-        try:
-            return pd.to_datetime(float(s), unit="D", origin="1899-12-30")
-        except Exception:
-            pass
-    return pd.to_datetime(s, errors="coerce")
-
-
-def normalize_status(s):
-    """접수처리 → 표준 상태"""
-    if pd.isna(s):
-        return "미정의"
-    sv = str(s).strip()
-    if sv in ["점검중", "진행중", "처리중"]:
-        return "점검중"
-    if sv in ["접수중", "대기", "미조치"]:
-        return "미조치(접수중)"
-    if sv in ["완료", "운영중", "사용중지"]:
-        return "완료"
-    return sv
-
-
-def status_counts(frame: pd.DataFrame):
-    total = len(frame)
-    vc = frame["상태"].value_counts()
-    prog = int(vc.get("점검중", 0))
-    pend = int(vc.get("미조치(접수중)", 0))
-    done = int(vc.get("완료", 0))
-    rate = (done / total * 100) if total else 0.0
-    return total, prog, pend, done, rate
-
-
-def render_kpi(cards, columns=5):
-    """KPI 카드 렌더링"""
-    st.markdown("""
-        <style>
-        .kpi-card {
-            padding:18px;
-            border-radius:12px;
-            border:1px solid rgba(255,255,255,0.08);
-            background:rgba(0,0,0,0.03);
-        }
-        .kpi-title{font-size:14px;color:#7e8b9c;margin-bottom:6px;}
-        .kpi-value{font-size:28px;font-weight:700;}
-        .c-blue{color:#2c7be5;}
-        .c-orange{color:#f59f00;}
-        .c-red{color:#e03131;}
-        .c-green{color:#2b8a3e;}
-        .c-navy{color:#233142;}
-        </style>
-    """, unsafe_allow_html=True)
-
-    cols = st.columns(columns)
-    for (title, value, cls), col in zip(cards, cols):
-        col.markdown(f"""
-            <div class="kpi-card">
-              <div class="kpi-title">{title}</div>
-              <div class="kpi-value {cls}">{value}</div>
-            </div>
-        """, unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────
-# 데이터 로드
-# ─────────────────────────────────────────────
-try:
-    df = fetch_csv(SHEET_URL)
-except Exception as e:
-    st.error(f"❌ 접수내용 로드 실패: {e}")
-    st.stop()
-
-if "날짜" not in df.columns or "접수처리" not in df.columns:
-    st.error("❌ 필수 컬럼(날짜, 접수처리)이 없습니다.")
-    st.stop()
-
-df["날짜"] = df["날짜"].apply(parse_jeju_date)
-df["상태"] = df["접수처리"].apply(normalize_status)
-df = df.dropna(subset=["날짜"]).copy()
-
-# ─────────────────────────────────────────────
-# 📅 금일 접수 현황
-# ─────────────────────────────────────────────
-st.title("📅 Daily 장애 접수 현황")
-
-today_kst = datetime.now(tz=KST).date()
-df_today = df[df["날짜"].dt.date == today_kst]
-t_total, t_prog, t_pend, t_done, t_rate = status_counts(df_today)
-
-render_kpi([
-    ("금일 접수", f"{t_total}", "c-blue"),
-    ("금일 점검중", f"{t_prog}", "c-orange"),
-    ("금일 미조치(접수중)", f"{t_pend}", "c-red"),
-    ("금일 완료", f"{t_done}", "c-green"),
-    ("금일 완료율", f"{t_rate:0.1f}%", "c-navy"),
-])
-
-st.divider()
-
-# ─────────────────────────────────────────────
-# 🧾 조치 필요 목록 (미조치/점검중)
-# ─────────────────────────────────────────────
-st.subheader("🧾 금일 장애 접수 목록")
-pending = df_today[df_today["상태"].isin(["미조치(접수중)", "점검중"])]
-cols_show = [c for c in ["날짜", "포지션", "위치", "설비명",
-                         "장애내용", "상태", "점검자"] if c in pending.columns]
-
-if not pending.empty:
-    st.dataframe(
-        pending.sort_values("날짜", ascending=False)[cols_show],
-        use_container_width=True, height=320
+    # 2️⃣ localStorage에 저장된 이메일 확인
+    saved_email = streamlit_js_eval(
+        js_expressions="localStorage.getItem('981_user_email')",
+        key="get_user_email_js",
     )
-else:
-    st.info("✅ 현재 미조치 또는 점검중 장애가 없습니다.")
 
-st.caption("© 2025 981Park Technical Support Team — Daily Report (금일 현황)")
+    if saved_email:
+        email = saved_email.strip().lower()
+        st.session_state.user_email = email
+        return email, AUTHORIZED_USERS.get(email, "게스트")
+
+    # 3️⃣ 로그인 입력 UI (최초 로그인)
+    with st.sidebar:
+        st.markdown("### 👋 환영합니다")
+        st.write("최초 1회만 회사 이메일을 입력해주세요.")
+        email_input = st.text_input("📧 회사 이메일 입력", key="email_input").strip().lower()
+
+        if st.button("확인", key="email_confirm_btn"):
+            if not email_input or "@monolith.co.kr" not in email_input:
+                st.warning("회사 이메일(@monolith.co.kr)만 사용 가능합니다.")
+            else:
+                st.session_state.user_email = email_input
+                # localStorage 저장
+                streamlit_js_eval(
+                    js_expressions=f"localStorage.setItem('981_user_email', '{email_input}')",
+                    key="set_user_email_js",
+                )
+                st.success(f"✅ {email_input} 으로 로그인되었습니다!")
+                st.rerun()  # 즉시 새로고침 없이 UI 반영
+
+    return None, None
+
+
+# ─────────────────────────────
+# ✅ 공용 사이드바 렌더링
+# ─────────────────────────────
+def render_sidebar(active=None):
+    """공용 사이드바 렌더링"""
+    email, name = get_current_user()
+
+    # 로그인되지 않은 경우: 이메일 입력 UI만 표시
+    if not email:
+        return
+
+    # ─ Header ─
+    st.sidebar.markdown("### 📍 메뉴")
+    st.sidebar.markdown(f"**👋 환영합니다, {name}님!**")
+    st.sidebar.caption(f"현재 계정: `{email}`")
+
+    # ─ Crew 메뉴 (모두 접근 가능)
+    with st.sidebar.expander("🧑‍✈️ Crew", expanded=True):
+        st.page_link("pages/01_issueform.py", label="📝 장애 접수")
+
+    # ─ 기술지원 전용 메뉴 (허용 이메일만)
+    if email in ALLOWED_EMAILS:
+        st.sidebar.divider()
+        st.sidebar.markdown("### 💼 기술지원")
+        st.page_link("app.py", label="📊 Dashboard")
+        st.page_link("pages/02_issue_manage.py", label="🧾 장애 처리")
+        st.page_link("pages/daily_report.py", label="📅 Daily")
+    else:
+        st.sidebar.divider()
+        st.sidebar.info("🔒 기술지원 전용 메뉴는 접근 권한이 없습니다.")
