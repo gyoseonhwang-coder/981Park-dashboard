@@ -32,12 +32,12 @@ st.caption(f"현재 접속 계정: {email or '게스트 (로그인 필요 없음
 # ─────────────────────────────────────────────
 # 💬 Google Chat Webhook 전송
 # ─────────────────────────────────────────────
-def send_google_chat_alert(form_data: dict):
+ddef send_google_chat_alert(form_data: dict):
     """981Park 장애 접수용 Google Chat 알림"""
     WEBHOOK_URL = (
-        "https://chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
+        "chat.googleapis.com/v1/spaces/AAAA--bBVFA/messages"
         "?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI"
-        "&token=qpitTslB-dlzAaxy3nqBCSfSxOcjm1ly6vYWDTaPRB8"
+        "&token=KTqHuz3sZhnrpJXkFyo8__ZNNytvsZehQoRcluPCzVY"
     )
 
     now_kst = datetime.now(timezone(timedelta(hours=9)))
@@ -61,8 +61,8 @@ def send_google_chat_alert(form_data: dict):
                 "sections": [{
                     "widgets": [
                         {"decoratedText": {"topLabel": "작성자", "text": form_data.get("작성자", "-")}},
-                        {"decoratedText": {"topLabel": "포지션/위치", "text": f"{form_data.get('포지션', '-')}/{form_data.get('위치', '-')}"}},
-                        {"decoratedText": {"topLabel": "설비/세부장치", "text": f"{form_data.get('설비명', '-')}/{form_data.get('세부장치', '-')}"}},
+                        {"decoratedText": {"topLabel": "포지션 / 위치", "text": f"{form_data.get('포지션', '-') or '-'} / {form_data.get('위치', '-') or '-'}"}},
+                        {"decoratedText": {"topLabel": "설비명 / 세부장치", "text": f"{form_data.get('설비명', '-') or '-'} / {form_data.get('세부장치', '-') or '-'}"}},
                         {"decoratedText": {"topLabel": "장애유형", "text": form_data.get("장애유형", "-")}},
                         {"decoratedText": {"topLabel": "장애내용", "text": form_data.get("장애내용", "-")}},
                         {"decoratedText": {"topLabel": "긴급도", "text": "🔥 긴급" if urgent else "✅ 일반"}},
@@ -75,13 +75,14 @@ def send_google_chat_alert(form_data: dict):
 
     try:
         resp = requests.post(WEBHOOK_URL, json=card_msg, timeout=10)
-        if resp.status_code != 200:
-            st.warning(f"⚠️ 카드 전송 실패: {resp.text[:120]}")
-            requests.post(WEBHOOK_URL, json={"text": str(form_data)}, timeout=10)
-        else:
+        if resp.status_code == 200:
             st.toast("💬 Google Chat 알림 전송 완료", icon="✅")
+        else:
+            # ❗ 경고만 표시하고, 다시 텍스트 메시지 보내지 않음
+            st.warning(f"⚠️ Google Chat 응답 코드 {resp.status_code}: {resp.text[:100]}")
     except Exception as e:
         st.error(f"❌ Webhook 전송 오류: {e}")
+
 
 
 # ─────────────────────────────────────────────
