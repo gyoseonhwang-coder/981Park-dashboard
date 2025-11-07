@@ -6,28 +6,6 @@ import os
 def render_sidebar(active: str = "Dashboard"):
     """981Park Streamlit 사이드바 (공통 메뉴 + 헤더 자동 제거 포함)"""
 
-    # ✅ 헤더/파일명 완전 제거 (pages 포함)
-    st.markdown("""
-        <style>
-        /* 모든 상단 헤더 및 파일명 제거 */
-        header[data-testid="stHeader"],
-        [data-testid="stToolbar"],
-        [data-testid="stDecoration"],
-        div[data-testid="stMarkdownContainer"] h1,
-        div.block-container > div:first-child h1,
-        div[data-testid="stAppViewBlockContainer"] h1,
-        div[data-testid="stVerticalBlock"] h1,
-        div[data-testid="stHorizontalBlock"] h1,
-        section.main > div:first-child h1 {
-            display: none !important;
-            visibility: hidden !important;
-            height: 0 !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
     # ─────────────────────────────────────────────
     # ✅ 사이드바 메뉴
     # ─────────────────────────────────────────────
