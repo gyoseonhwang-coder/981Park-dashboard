@@ -6,35 +6,27 @@ import os
 def render_sidebar(active: str = "Dashboard"):
     """981Park Streamlit 사이드바 (공통 메뉴 + 헤더 자동 제거 포함)"""
 
-    # ─────────────────────────────────────────────
-    # ✅ 페이지 헤더 자동 제거 (파일명 표시 숨김)
-    # ─────────────────────────────────────────────
-    hide_header_script = """
-    <script>
-    function hideStreamlitHeader() {
-        const titleSelectors = [
-            'section.main h1',
-            'div[data-testid="stMarkdownContainer"] h1',
-            'div[data-testid="stAppViewBlockContainer"] h1'
-        ];
-        titleSelectors.forEach(sel => {
-            const el = window.parent.document.querySelector(sel);
-            if (el && /(01_issueform|02_issue_manage|03_daily|app)/i.test(el.innerText)) {
-                el.style.display = 'none';
-            }
-        });
-        const header = window.parent.document.querySelector('header[data-testid="stHeader"]');
-        const toolbar = window.parent.document.querySelector('div[data-testid="stToolbar"]');
-        const deco = window.parent.document.querySelector('[data-testid="stDecoration"]');
-        if (header) header.style.display = 'none';
-        if (toolbar) toolbar.style.display = 'none';
-        if (deco) deco.style.display = 'none';
-    }
-    setTimeout(hideStreamlitHeader, 800);
-    setInterval(hideStreamlitHeader, 1500);
-    </script>
-    """
-    st.markdown(hide_header_script, unsafe_allow_html=True)
+    # ✅ 헤더/파일명 완전 제거 (pages 포함)
+    st.markdown("""
+        <style>
+        /* 모든 상단 헤더 및 파일명 제거 */
+        header[data-testid="stHeader"],
+        [data-testid="stToolbar"],
+        [data-testid="stDecoration"],
+        div[data-testid="stMarkdownContainer"] h1,
+        div.block-container > div:first-child h1,
+        div[data-testid="stAppViewBlockContainer"] h1,
+        div[data-testid="stVerticalBlock"] h1,
+        div[data-testid="stHorizontalBlock"] h1,
+        section.main > div:first-child h1 {
+            display: none !important;
+            visibility: hidden !important;
+            height: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
     # ─────────────────────────────────────────────
     # ✅ 사이드바 메뉴
@@ -59,11 +51,11 @@ def render_sidebar(active: str = "Dashboard"):
         if st.button("📅 Daily", use_container_width=True):
             try:
                 if is_cloud:
-                    st.switch_page("pages/03_daily")
+                    st.switch_page("pages/daily_report")
                 else:
-                    st.switch_page("pages/03_daily.py")
+                    st.switch_page("pages/daily_report.py")
             except Exception:
-                st.page_link("pages/03_daily.py", label="📅 Daily")
+                st.page_link("pages/daily_report.py", label="📅 Daily")
 
         # ✅ 장애 접수 버튼
         if st.button("🧾 장애 접수", use_container_width=True):
