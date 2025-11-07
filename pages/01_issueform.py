@@ -136,12 +136,12 @@ def send_google_chat_alert(form_data: dict):
         st.error(f"❌ Webhook 전송 중 오류: {e}")
 
 
-st.markdown("""
-<style>
-[data-testid="stSidebarNav"] {display: none !important;}
-section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
-</style>
-""", unsafe_allow_html=True)
+#st.markdown("""
+#<style>
+#[data-testid="stSidebarNav"] {display: none !important;}
+#section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
+#</style>
+#""", unsafe_allow_html=True)
 
 st.set_page_config(page_title="🧾 981Park 장애 접수",
                    layout="wide", initial_sidebar_state="expanded")

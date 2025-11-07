@@ -11,12 +11,12 @@ st.set_page_config(page_title="🧰 981Park 장애 처리", layout="wide")
 render_sidebar(active="IssueManage")
 
 # 🔒 사이드바 네비게이션 숨김 처리 (app / issueform / issue manage)
-st.markdown("""
-<style>
-[data-testid="stSidebarNav"] {display: none !important;}
-section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
-</style>
-""", unsafe_allow_html=True)
+#st.markdown("""
+#<style>
+#[data-testid="stSidebarNav"] {display: none !important;}
+#section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
+#</style>
+#""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # Google 인증

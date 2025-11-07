@@ -6,6 +6,9 @@ import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from menu_ui import render_sidebar
+import sys
+import os
+
 
 # ─────────────────────────────────────────────
 # 페이지 기본 설정
@@ -13,19 +16,10 @@ from menu_ui import render_sidebar
 st.set_page_config(page_title="📅 Daily 현황", layout="wide")
 render_sidebar(active="Daily")
 
-# ✅ 파일 경로 표시 제거
-st.markdown("""
-<style>
-header[data-testid="stHeader"] { display: none !important; }
-main.block-container { padding-top: 1rem !important; }
-</style>
-""", unsafe_allow_html=True)
-
 # ─────────────────────────────────────────────
 # 데이터 로드 유틸리티
 # ─────────────────────────────────────────────
 KST = ZoneInfo("Asia/Seoul")
-
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
 
 
@@ -93,11 +87,14 @@ def status_counts(frame: pd.DataFrame):
 
 def render_kpi(cards, columns=5):
     """KPI 카드 렌더링"""
-    st.markdown(
-        """
+    st.markdown("""
         <style>
-        .kpi-card{padding:18px;border-radius:12px;border:1px solid rgba(255,255,255,0.08);
-                  background:rgba(0,0,0,0.03);}
+        .kpi-card {
+            padding:18px;
+            border-radius:12px;
+            border:1px solid rgba(255,255,255,0.08);
+            background:rgba(0,0,0,0.03);
+        }
         .kpi-title{font-size:14px;color:#7e8b9c;margin-bottom:6px;}
         .kpi-value{font-size:28px;font-weight:700;}
         .c-blue{color:#2c7be5;}
@@ -106,20 +103,16 @@ def render_kpi(cards, columns=5):
         .c-green{color:#2b8a3e;}
         .c-navy{color:#233142;}
         </style>
-        """,
-        unsafe_allow_html=True,
-    )
+    """, unsafe_allow_html=True)
+
     cols = st.columns(columns)
     for (title, value, cls), col in zip(cards, cols):
-        col.markdown(
-            f"""
+        col.markdown(f"""
             <div class="kpi-card">
               <div class="kpi-title">{title}</div>
               <div class="kpi-value {cls}">{value}</div>
             </div>
-            """,
-            unsafe_allow_html=True,
-        )
+        """, unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────
