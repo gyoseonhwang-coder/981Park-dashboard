@@ -77,11 +77,11 @@ def render_sidebar(active: str = "Dashboard"):
                 if st.button("📅 Daily", use_container_width=True):
                     try:
                         if is_cloud:
-                            st.switch_page("pages/03_daily")
+                            st.switch_page("pages/daily_report")
                         else:
-                            st.switch_page("pages/03_daily.py")
+                            st.switch_page("pages/daily_report.py")
                     except Exception:
-                        st.page_link("pages/03_daily.py", label="📅 Daily")
+                        st.page_link("pages/daily_report.py", label="📅 Daily")
 
                 if st.button("🧰 장애 처리", use_container_width=True):
                     try:
