@@ -3,6 +3,13 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from menu_ui import render_sidebar
+from menu_ui import get_current_user, AUTHORIZED_USERS
+
+email, name = get_current_user()
+if email not in AUTHORIZED_USERS:
+    st.error("🚫 접근 권한이 없습니다. (기술지원 전용 페이지)")
+    st.stop()
+
 
 # ─────────────────────────────────────────────
 # 기본 설정
