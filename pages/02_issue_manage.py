@@ -10,6 +10,14 @@ from menu_ui import render_sidebar
 st.set_page_config(page_title="🧰 981Park 장애 처리", layout="wide")
 render_sidebar(active="IssueManage")
 
+# 🔒 사이드바 네비게이션 숨김 처리 (app / issueform / issue manage)
+st.markdown("""
+<style>
+[data-testid="stSidebarNav"] {display: none !important;}
+section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
+</style>
+""", unsafe_allow_html=True)
+
 # ─────────────────────────────────────────────
 # Google 인증
 # ─────────────────────────────────────────────
@@ -73,6 +81,8 @@ def load_issue_log() -> pd.DataFrame:
 # ─────────────────────────────────────────────
 st.title("🧰 981Park 장애 처리")
 st.subheader("🧾 조치 필요 목록 (미조치/점검중)")
+
+st.divider()
 
 df = load_issue_log()
 
@@ -173,8 +183,6 @@ if selected_label != "선택 안 함":
         "📍 포지션 시트로 이동 (선택 안 함 가능)",
         ["선택 안 함", "Audio/Video", "RACE", "LAB", "운영설비", "충전설비", "정비고", "기타"]
     )
-
-
 
     # 상태별 처리 버튼
     # 🚧 접수중 → 점검중
