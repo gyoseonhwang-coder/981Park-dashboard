@@ -9,6 +9,8 @@ import requests
 import io
 import re
 
+st.set_page_config(page_title="📊 Dashboard", layout="wide")
+render_sidebar(active="Dashboard")
 
 def _month_key(label: str) -> int:
     """
