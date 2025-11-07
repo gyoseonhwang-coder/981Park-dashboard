@@ -144,7 +144,7 @@ t_total, t_prog, t_pend, t_done, t_rate = status_counts(df_today)
 render_kpi([
     ("금일 접수", f"{t_total}", "c-blue"),
     ("금일 점검중", f"{t_prog}", "c-orange"),
-    ("금일 미조치", f"{t_pend}", "c-red"),
+    ("금일 미조치(접수중)", f"{t_pend}", "c-red"),
     ("금일 완료", f"{t_done}", "c-green"),
     ("금일 완료율", f"{t_rate:0.1f}%", "c-navy"),
 ])
