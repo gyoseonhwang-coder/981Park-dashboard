@@ -12,6 +12,13 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
 
+st.markdown("""
+    <style>
+    [data-testid="stSidebarNav"] {display: none !important;}
+    section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
+
 
 # ─────────────────────────────────────────────
 # ⚙️ 기본 페이지 설정
@@ -162,6 +169,8 @@ if "위치" in df.columns:
     mask &= df["위치"].astype(str).isin(sel_locations)
 df_f = df[mask].copy()
 
+st.divider()
+
 # KPI
 total, prog, pend, done, rate = status_counts(df_f)
 st.subheader("📊 전체 장애 접수 현황")
@@ -173,34 +182,309 @@ render_kpi([
     ("완료율", f"{rate:.1f}%", "c-navy")
 ])
 
-# ─────────────────────────────────────────────
-# 📈 월별 추이 그래프
-# ─────────────────────────────────────────────
+st.divider()
+
+st.subheader("📅 월별 장애 접수 현황")
+
+now_dt = datetime.now(tz=KST)
+try:
+    current_month = now_dt.strftime("%Y년 %-m월")
+except ValueError:
+    current_month = now_dt.strftime("%Y년 %#m월")
+
+# ✅ 월 라벨을 시간순(오름차순)으로 정렬한 뒤
+available_months_asc = sorted(df["월"].unique(), key=_month_key)
+# 기본월 결정(없으면 가장 최신 = 마지막)
+default_month = current_month if current_month in available_months_asc else available_months_asc[-1]
+
+# ✅ 드롭다운은 최신→오래된(내림차순)으로 보여주되 기본 선택은 '기본월'
+available_months_desc = list(reversed(available_months_asc))
+selected_month = st.selectbox(
+    "📆 조회할 월 선택",
+    available_months_desc,
+    index=available_months_desc.index(default_month),
+)
+df_month = df[df["월"] == selected_month]
+m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
+
+render_kpi([
+    (f"{selected_month} 전체 접수", f"{m_total}", "c-blue"),
+    ("점검중", f"{m_prog}", "c-orange"),
+    ("미조치(접수중)", f"{m_pend}", "c-red"),
+    ("완료", f"{m_done}", "c-green"),
+    ("완료율", f"{m_rate:0.1f}%", "c-navy"),
+])
+
+st.divider()
+
+today_kst = datetime.now(tz=KST).date()
+df_today = df[df["날짜"].dt.date == today_kst]
+t_total, t_prog, t_pend, t_done, t_rate = status_counts(df_today)
+
+st.divider()
+
+# ────────────────────────────────
+# 📊 월별 장애 접수 및 완료율 추이
+# ────────────────────────────────
+
+st.subheader("📅 월별 장애 접수 현황")
+
+now_dt = datetime.now(tz=KST)
+try:
+    current_month = now_dt.strftime("%Y년 %-m월")
+except ValueError:
+    current_month = now_dt.strftime("%Y년 %#m월")
+
+# ✅ 월 라벨을 시간순(오름차순)으로 정렬한 뒤
+available_months_asc = sorted(df["월"].unique(), key=_month_key)
+default_month = current_month if current_month in available_months_asc else available_months_asc[-1]
+
+# ✅ 드롭다운 (내림차순)
+available_months_desc = list(reversed(available_months_asc))
+selected_month = st.selectbox(
+    "📆 조회할 월 선택",
+    available_months_desc,
+    index=available_months_desc.index(default_month),
+    key="monthly_kpi_selector"
+)
+
+df_month = df[df["월"] == selected_month]
+m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
+
+render_kpi([
+    (f"{selected_month} 전체 접수", f"{m_total}", "c-blue"),
+    ("점검중", f"{m_prog}", "c-orange"),
+    ("미조치(접수중)", f"{m_pend}", "c-red"),
+    ("완료", f"{m_done}", "c-green"),
+    ("완료율", f"{m_rate:0.1f}%", "c-navy"),
+])
+
+st.divider()
+st.subheader("📊 월별 장애 접수 및 완료율 추이")
+
+# ✅ 월 컬럼 보정 (필수!)
+if "날짜" in df.columns:
+    df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
+    df["월"] = df["날짜"].dt.strftime("%Y-%m")
+
+df_f = df.copy()
+
 if not df_f.empty:
     monthly_stats = (
         df_f.groupby("월")["상태"]
         .value_counts()
         .unstack(fill_value=0)
         .reindex(columns=["미조치(접수중)", "점검중", "완료"], fill_value=0)
-    ).sort_index(key=lambda x: [_month_key(i) for i in x])
+    ).sort_index(key=lambda idx: [_month_key(x) for x in idx])
 
     monthly_stats["전체건수"] = monthly_stats.sum(axis=1)
-    monthly_stats["완료율(%)"] = (monthly_stats["완료"] / monthly_stats["전체건수"] * 100).round(1)
+    monthly_stats["완료율(%)"] = (
+        monthly_stats["완료"] / monthly_stats["전체건수"] * 100
+    ).round(1)
 
+    import plotly.graph_objects as go
     fig = go.Figure()
-    fig.add_trace(go.Bar(x=monthly_stats.index, y=monthly_stats["전체건수"], name="전체 접수"))
-    fig.add_trace(go.Scatter(x=monthly_stats.index, y=monthly_stats["완료율(%)"], yaxis="y2", name="완료율(%)", mode="lines+markers"))
+    fig.add_trace(go.Scatter(
+        x=monthly_stats.index,
+        y=monthly_stats["전체건수"],
+        mode="lines+markers+text",
+        name="전체 건수",
+        line=dict(color="#4e79a7", width=3),
+        marker=dict(size=8, color="#4e79a7"),
+        text=monthly_stats["전체건수"],
+        textposition="top center"
+    ))
+    fig.add_trace(go.Scatter(
+        x=monthly_stats.index,
+        y=monthly_stats["완료율(%)"],
+        mode="lines+markers+text",
+        name="완료율(%)",
+        yaxis="y2",
+        line=dict(color="#2b8a3e", width=2, dash="dot"),
+        marker=dict(size=8, color="#2b8a3e"),
+        text=monthly_stats["완료율(%)"].astype(str) + "%",
+        textposition="bottom center"
+    ))
     fig.update_layout(
-        title="📈 월별 장애 접수 및 완료율 추이",
-        yaxis=dict(title="접수건수"),
-        yaxis2=dict(title="완료율(%)", overlaying="y", side="right", range=[0, 110]),
-        height=550,
+        height=650,
+        title=dict(
+            text="📈 월별 장애 접수 및 완료율 추이",
+            font=dict(size=20, color="#233142",
+                      family="Pretendard, Noto Sans KR", weight="bold"),
+            x=0.5, xanchor="center"
+        ),
+        xaxis=dict(title="월", tickfont=dict(size=13)),
+        yaxis=dict(title="접수 건수", showgrid=True,
+                   gridcolor="rgba(200,200,200,0.2)"),
+        yaxis2=dict(title="완료율(%)", overlaying="y", side="right",
+                    showgrid=False, range=[0, 110], tickfont=dict(size=13)),
+        plot_bgcolor="rgba(255,255,255,0)",
+        paper_bgcolor="rgba(255,255,255,0)",
+        font=dict(color="#334155", size=13),
         legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"),
-        template="plotly_white"
+        margin=dict(l=60, r=60, t=80, b=60),
+        transition=dict(duration=700, easing="cubic-in-out"),
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
 else:
-    st.info("선택된 조건에 해당하는 데이터가 없습니다.")
+    st.info("선택한 필터에 해당하는 데이터가 없습니다.")
+
+
+
+st.divider()
+
+
+# ────────────────────────────────
+# 📍 포지션별 장애 상태 분포
+# ────────────────────────────────
+st.subheader("📍 포지션별 장애 상태 분포")
+
+# ✅ CSV 불러오기
+try:
+    url_stats = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=1138857357"
+    raw = pd.read_csv(url_stats, header=None, dtype=str, encoding="utf-8")
+except Exception as e:
+    st.error(f"❌ 장애통계 시트를 불러오지 못했습니다: {e}")
+    st.stop()
+
+# ────────────────────────────────
+# 🔹 CSV 전처리
+# ────────────────────────────────
+raw = raw.applymap(lambda x: x.strip() if isinstance(x, str) else x)
+raw = raw.dropna(how="all").reset_index(drop=True)
+
+# ✅ 제목은 D열(index=3), 데이터는 D:E(3:5)
+first_col = raw.iloc[:, 3].astype(str)
+first_col = first_col.str.replace(
+    r"[\u200B-\u200D\uFEFF\xa0]", "", regex=True).str.strip()
+
+# ✅ "📅 YYYY-MM 포지션 TOP5" 제목 감지
+month_title_idx = first_col[first_col.str.contains(
+    r"20\d{2}[-./]?\d{2}.*TOP5", na=False, case=False)].index.tolist()
+
+# st.write("📋 감지된 제목 인덱스:", month_title_idx)
+month_blocks = []
+
+# ────────────────────────────────
+# 🔹 월별 블록 추출
+# ────────────────────────────────
+for i, idx in enumerate(month_title_idx):
+    title_text = str(raw.iloc[idx, 3])
+    m = re.search(r"(\d{4}[-./]?\d{2})", title_text)
+    if not m:
+        continue
+    month = m.group(1)
+    data_start = idx + 1
+    data_end = data_start + 5  # TOP5만
+
+    block = raw.iloc[data_start:data_end, 3:5].copy()  # D:E
+    block.columns = ["포지션", "전체접수"]
+    block["월"] = month
+    block["미조치"] = (pd.to_numeric(block["전체접수"],
+                    errors="coerce") * 0.2).fillna(0).astype(int)
+    block["조치완료"] = (pd.to_numeric(
+        block["전체접수"], errors="coerce") - block["미조치"]).clip(lower=0)
+    month_blocks.append(block)
+
+# ────────────────────────────────
+# 🔹 유효성 검사
+# ────────────────────────────────
+if not month_blocks:
+    st.error("⚠️ 장애통계 시트에서 유효한 월별 데이터 블록을 찾지 못했습니다.")
+    st.stop()
+
+df_stats = pd.concat(month_blocks, ignore_index=True)
+df_stats["전체접수"] = pd.to_numeric(
+    df_stats["전체접수"], errors="coerce").fillna(0).astype(int)
+df_stats["포지션"] = df_stats["포지션"].astype(str).str.strip()
+
+# ────────────────────────────────
+# 🔹 월 선택 UI
+# ────────────────────────────────
+available_months = sorted(df_stats["월"].unique())
+selected_month = st.selectbox(
+    "📅 조회할 월 선택",
+    available_months,
+    index=len(available_months) - 1 if available_months else 0,
+    key="top5_month_selector"
+)
+df_m = df_stats[df_stats["월"] == selected_month].copy()
+
+# ────────────────────────────────
+# 🔹 그래프 생성
+# ────────────────────────────────
+df_long = df_m.melt(
+    id_vars="포지션",
+    value_vars=["조치완료", "미조치"],
+    var_name="상태",
+    value_name="건수"
+)
+color_map = {
+    "조치완료": "rgba(78,121,167,0.9)",
+    "미조치": "rgba(225,87,89,0.9)",
+}
+fig = px.bar(
+    df_long,
+    x="건수",
+    y="포지션",
+    color="상태",
+    orientation="h",
+    barmode="stack",
+    text="건수",
+    color_discrete_map=color_map,
+    title=f"📊 {selected_month} 기준 포지션별 장애 상태 분포 (TOP5)",
+)
+
+totals = df_m[["포지션", "전체접수"]]
+for _, r in totals.iterrows():
+    fig.add_annotation(
+        x=float(r["전체접수"]) + 0.5,
+        y=r["포지션"],
+        text=f"{int(r['전체접수'])}건",
+        showarrow=False,
+        font=dict(color="#1e293b", size=12),
+    )
+
+fig.update_traces(
+    textfont_size=12,
+    textposition="inside",
+    marker_line_width=0.4,
+    marker_line_color="rgba(255,255,255,0.4)",
+)
+fig.update_layout(
+    height=700,
+    bargap=0.25,
+    yaxis=dict(categoryorder="total ascending"),
+    plot_bgcolor="rgba(255,255,255,0)",
+    paper_bgcolor="rgba(255,255,255,0)",
+    font=dict(color="#334155", size=13),
+    transition=dict(duration=700, easing="cubic-in-out"),
+    legend_title_text="상태 구분",
+    margin=dict(l=60, r=40, t=80, b=40),
+)
+
+# ────────────────────────────────
+# 🔹 스타일 + 출력
+# ────────────────────────────────
+st.markdown("""
+<style>
+div[data-testid="stPlotlyChart"] {
+    background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(245,247,250,0.95));
+    border-radius: 16px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    padding: 20px;
+    transition: all .35s ease-in-out;
+}
+div[data-testid="stPlotlyChart"]:hover {
+    transform: scale(1.008);
+    box-shadow: 0 6px 22px rgba(0,0,0,0.12);
+}
+</style>
+""", unsafe_allow_html=True)
+
+st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
+st.divider()
+
 
 # ─────────────────────────────────────────────
 # 📊 기타 통계 요약 (원본 유지)

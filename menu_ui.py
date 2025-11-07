@@ -61,29 +61,26 @@ def get_current_user():
 # ✅ 사이드바 렌더링
 # ─────────────────────────────
 def render_sidebar(active=None):
-    """공용 사이드바 렌더링"""
     email, name = get_current_user()
-
-    # 로그인되지 않은 경우 → 로그인 UI만 표시
     if not email:
         return
 
-    # ─ 메뉴 헤더 ─
+    # ─ Header ─
     st.sidebar.markdown("### 📍 메뉴")
     st.sidebar.markdown(f"**👋 환영합니다, {name}님!**")
     st.sidebar.caption(f"현재 계정: `{email}`")
 
-    # ─ Crew 메뉴 (모두 접근 가능) ─
+    # ─ Crew 메뉴 (공용) ─
     with st.sidebar.expander("🧑‍✈️ Crew", expanded=True):
         st.page_link("pages/01_issueform.py", label="📝 장애 접수")
 
     # ─ 기술지원 전용 메뉴 (권한자만 접근 가능) ─
     if email in ALLOWED_EMAILS:
-        st.sidebar.divider()
-        st.sidebar.markdown("### 💼 기술지원")
-        st.page_link("app.py", label="📊 Dashboard")
-        st.page_link("pages/02_issue_manage.py", label="🧾 장애 처리")
-        st.page_link("pages/daily_report.py", label="📅 Daily")
+        with st.sidebar.expander("💼 기술지원", expanded=True):
+            st.page_link("app.py", label="📊 Dashboard")
+            st.page_link("pages/daily_report.py", label="📅 Daily")
+            st.page_link("pages/02_issue_manage.py", label="🧾 장애 처리")
     else:
         st.sidebar.divider()
         st.sidebar.info("🔒 기술지원 전용 메뉴는 접근 권한이 없습니다.")
+

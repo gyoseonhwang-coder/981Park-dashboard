@@ -8,6 +8,12 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
 
+st.markdown("""
+    <style>
+    [data-testid="stSidebarNav"] {display: none !important;}
+    section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────
 # ⚙️ Page Setup & Auth
