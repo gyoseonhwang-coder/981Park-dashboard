@@ -2,6 +2,11 @@ import streamlit as st
 import sys
 import os
 
+import streamlit as st
+st.write("DEBUG: st.user =", getattr(st, "user", None))
+st.write("DEBUG: st.user.email =", getattr(getattr(st, "user", None), "email", None))
+st.write("DEBUG: st.user.name =", getattr(getattr(st, "user", None), "name", None))
+
 # ─────────────────────────────────────────────
 # ✅ 1. 기술지원팀 권한 계정 정의
 # ─────────────────────────────────────────────
