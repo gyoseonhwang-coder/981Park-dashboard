@@ -281,15 +281,6 @@ today_kst = datetime.now(tz=KST).date()
 df_today = df[df["날짜"].dt.date == today_kst]
 t_total, t_prog, t_pend, t_done, t_rate = status_counts(df_today)
 
-st.subheader("📅 금일 접수 현황 (KST 기준)")
-render_kpi([
-    ("금일 접수", f"{t_total}", "c-blue"),
-    ("금일 점검중", f"{t_prog}", "c-orange"),
-    ("금일 미조치", f"{t_pend}", "c-red"),
-    ("금일 완료", f"{t_done}", "c-green"),
-    ("금일 완료율", f"{t_rate:0.1f}%", "c-navy"),
-])
-
 st.divider()
 
 st.subheader("📊 월별 장애 접수 및 완료율 추이")
@@ -601,14 +592,3 @@ div[data-testid="stPlotlyChart"]:hover {
 
 st.divider()
 
-st.subheader("🧾 조치 필요 목록 (미조치/점검중)")
-pending = df_f[df_f["상태"].isin(["미조치(접수중)", "점검중"])]
-cols_show = [c for c in ["날짜", "포지션", "위치", "설비명",
-                         "장애내용", "상태", "점검자"] if c in pending.columns]
-st.dataframe(
-    pending.sort_values("날짜", ascending=False)[cols_show],
-    use_container_width=True, height=320
-)
-
-st.caption(
-    "© 2025 981Park Technical Support Team — Premium UX Dashboard (접수내용 실시간)")

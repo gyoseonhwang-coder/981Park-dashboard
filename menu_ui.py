@@ -26,6 +26,16 @@ def render_sidebar(active: str = "Dashboard"):
                 # Fallback — Cloud에서 switch_page 실패 시 page_link 로 대체
                 st.page_link("Home", label="📊 Dashboard")
 
+        # ✅ Daily 버튼 (📅 일일 통계 페이지)
+        if st.button("📅 Daily", use_container_width=True):
+            try:
+                if is_cloud:
+                    st.switch_page("pages/03_daily")
+                else:
+                    st.switch_page("pages/03_daily.py")
+            except Exception:
+                st.page_link("pages/03_daily.py", label="📅 Daily")
+
         # ✅ 장애 접수 버튼
         if st.button("🧾 장애 접수", use_container_width=True):
             try:
