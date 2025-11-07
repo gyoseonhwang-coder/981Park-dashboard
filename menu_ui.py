@@ -11,6 +11,13 @@ AUTHORIZED_USERS = {
     "seonghoon.kang@monolith.co.kr": "강성훈"
 }
 
+
+def get_user_info():
+    """현재 로그인한 사용자 정보 안전하게 반환"""
+    user = getattr(st, "user", None)
+    email = getattr(user, "email", "guest")
+    name = getattr(user, "name", "게스트")
+    return name, email
 def get_current_user():
     """현재 사용자 이메일/이름 반환 (st.user 기반 최신 버전)"""
     try:
@@ -27,73 +34,42 @@ def get_current_user():
     name = AUTHORIZED_USERS.get(email)
     return email, name
 
-
 # ─────────────────────────────────────────────
 # ✅ 2. 사이드바 렌더링
 # ─────────────────────────────────────────────
-def render_sidebar(active: str = "Dashboard"):
-    """981Park Streamlit 사이드바 (Crew + 기술지원 + 권한 제어 포함)"""
-    with st.sidebar:
-        st.markdown("## 📍 메뉴")
+def render_sidebar(active=None):
+    name, email = get_user_info()
 
-        # 환경 감지
-        is_cloud = "mount/src" in sys.path[0] or os.environ.get("STREAMLIT_RUNTIME")
-        email, name = get_current_user()
+    st.sidebar.markdown("### 📍 메뉴")
+    st.sidebar.markdown(f"👋 환영합니다, **{name}**님.")
+    st.sidebar.caption(f"현재 계정: `{email}`")
 
-        # ─────────────────────────────────────────────
-        # 👋 상단 사용자 환영 메시지
-        # ─────────────────────────────────────────────
-        st.markdown("### 👋 " + (f"안녕하세요, **{name}** 님" if name else "환영합니다."))
-        st.caption(f"현재 계정: `{email}`")
-        st.markdown("---")
+    st.sidebar.divider()
 
-        # ─────────────────────────────────────────────
-        # 🧑‍✈️ Crew 메뉴 (공통)
-        # ─────────────────────────────────────────────
-        with st.expander("🧑‍✈️ Crew", expanded=True):
-            if st.button("🧾 장애 접수", use_container_width=True):
-                try:
-                    if is_cloud:
-                        st.switch_page("pages/01_issueform")
-                    else:
-                        st.switch_page("pages/01_issueform.py")
-                except Exception:
-                    st.page_link("pages/01_issueform.py", label="🧾 장애 접수")
+    # ──────────────────────────────
+    # Crew 메뉴
+    # ──────────────────────────────
+    with st.sidebar.expander("🧑‍✈️ Crew", expanded=True):
+        st.page_link("pages/01_issueform.py", label="📋 장애 접수")
 
-        # ─────────────────────────────────────────────
-        # 🛠️ 기술지원 메뉴 (권한 사용자 전용)
-        # ─────────────────────────────────────────────
-        if email in AUTHORIZED_USERS:
-            with st.expander("🛠️ 기술지원", expanded=True):
-                if st.button("📊 Dashboard", use_container_width=True):
-                    try:
-                        if is_cloud:
-                            st.switch_page("Home")
-                        else:
-                            st.switch_page("app.py")
-                    except Exception:
-                        st.page_link("Home", label="📊 Dashboard")
+    # ──────────────────────────────
+    # 기술지원 메뉴 접근 제한
+    # ──────────────────────────────
+    allowed_users = [
+        "gyoseon.hwang@monolith.co.kr",
+        "hyunjong.cho@monolith.co.kr",
+        "seonghoon.kang@monolith.co.kr"
+    ]
 
-                if st.button("📅 Daily", use_container_width=True):
-                    try:
-                        if is_cloud:
-                            st.switch_page("pages/daily_report")
-                        else:
-                            st.switch_page("pages/daily_report.py")
-                    except Exception:
-                        st.page_link("pages/daily_report.py", label="📅 Daily")
+    if email in allowed_users:
+        st.sidebar.divider()
+        with st.sidebar.expander("🧰 기술지원", expanded=True):
+            st.page_link("pages/02_issue_manage.py", label="🧾 장애 처리")
+            st.page_link("pages/daily_report.py", label="📅 Daily")
+            st.page_link("pages/dashboard.py", label="📊 Dashboard")
+    else:
+        st.sidebar.divider()
+        st.sidebar.info("🔒 기술지원 전용 메뉴는 접근 권한이 없습니다.", icon="🔒")
 
-                if st.button("🧰 장애 처리", use_container_width=True):
-                    try:
-                        if is_cloud:
-                            st.switch_page("pages/02_issue_manage")
-                        else:
-                            st.switch_page("pages/02_issue_manage.py")
-                    except Exception:
-                        st.page_link("pages/02_issue_manage.py", label="🧰 장애 처리")
-        else:
-            st.markdown("---")
-            st.info("🔒 기술지원 전용 메뉴는 접근 권한이 없습니다.")
-
-        st.markdown("---")
-        st.caption("© 2025 981Park Technical Support Team")
+    st.sidebar.divider()
+    st.sidebar.caption("© 2025 981Park Technical Support Team")
