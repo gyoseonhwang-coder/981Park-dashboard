@@ -15,18 +15,22 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 email, name = get_current_user()
-st.warning(f"현재 로그인된 이메일: {repr(email)}")  # repr()로 공백, 문자열형태 확인
+st.warning(f"현재 로그인된 이메일: {repr(email)}")
+st.stop()
 
-def is_monolith_user(email: str) -> bool:
-    """@monolith.co.kr 도메인 이메일만 허용"""
-    if not email:
-        return False
-    return email.strip().lower().endswith("@monolith.co.kr")
+#def is_monolith_user(email: str) -> bool:
+#    """@monolith.co.kr 도메인 이메일만 허용"""
+#    if not email:
+#        return False
+#    return email.strip().lower().endswith("@monolith.co.kr")
 
-email, name = get_current_user()
-if not is_monolith_user(email):
-    st.error("🚫 monolith.co.kr 도메인 계정만 접근 가능합니다.")
-    st.stop()
+#email, name = get_current_user()
+#if not is_monolith_user(email):
+#    st.error("🚫 monolith.co.kr 도메인 계정만 접근 가능합니다.")
+#    st.stop()
+
+# 사이드바
+#render_sidebar(active="IssueForm")
 
 # ─────────────────────────────────────────────
 # 📡 Google Chat Webhook 전송 함수
@@ -145,8 +149,7 @@ def send_google_chat_alert(form_data: dict):
 # ─────────────────────────────────────────────
 st.set_page_config(page_title="🧾 981Park 장애 접수", layout="wide", initial_sidebar_state="expanded")
 
-# 사이드바
-render_sidebar(active="IssueForm")
+
 
 # Google 인증
 try:

@@ -200,7 +200,7 @@ default_index = len(available_months) - 1 if available_months else 0
 
 # ✅ 월 선택 박스
 selected_month = st.selectbox(
-    "📅 조회할 월 선택",
+    "조회할 월 선택",
     available_months,
     index=default_index,
     key="month_selector"
@@ -371,7 +371,7 @@ df_stats["포지션"] = df_stats["포지션"].astype(str).str.strip()
 # ────────────────────────────────
 available_months = sorted(df_stats["월"].unique())
 selected_month = st.selectbox(
-    "📅 조회할 월 선택",
+    "조회할 월 선택",
     available_months,
     index=len(available_months) - 1 if available_months else 0,
     key="top5_month_selector"
