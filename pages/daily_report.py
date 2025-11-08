@@ -5,14 +5,16 @@ import io
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from menu_ui import render_sidebar, get_current_user, is_tech_support, AUTHORIZED_USERS
+from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
 
 # ─────────────────────────────────────────────
 # 🔐 접근 권한 확인
 # ─────────────────────────────────────────────
 email, name = get_current_user()
-if not is_tech_support(email):
-    st.error("🚫 접근 권한이 없습니다. (기술지원 전용 페이지)")
+
+# 기술지원 3명만 접근 허용
+if not email or email.strip().lower() not in [e.lower() for e in AUTHORIZED_USERS]:
+    st.error("🚫 이 메뉴는 기술지원 전용입니다.")
     st.stop()
 
 # ─────────────────────────────────────────────
