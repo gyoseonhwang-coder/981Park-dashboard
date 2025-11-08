@@ -62,6 +62,16 @@ def get_current_user():
 
     return None, None
 
+# ─────────────────────────────
+# ✅ 권한 검사 유틸리티 (추가!)
+# ─────────────────────────────
+def is_monolith_user(email: str) -> bool:
+    """@monolith.co.kr 이메일이면 True"""
+    return bool(email and email.strip().lower().endswith("@monolith.co.kr"))
+
+def is_tech_support(email: str) -> bool:
+    """기술지원 계정이면 True"""
+    return bool(email and email.strip().lower() in AUTHORIZED_USERS)
 
 # ─────────────────────────────
 # ✅ 사이드바 렌더링

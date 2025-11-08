@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 import requests
 import time
 from datetime import datetime, timezone, timedelta
-from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
+from menu_ui import render_sidebar, get_current_user, is_monolith_user, AUTHORIZED_USERS
 
 st.markdown("""
     <style>
@@ -16,23 +16,10 @@ st.markdown("""
 
 email, name = get_current_user()
 
-if not email or not email.lower().endswith("@monolith.co.kr"):
+if not is_monolith_user(email):
     st.error("🚫 회사 이메일(@monolith.co.kr)만 접근 가능합니다.")
     st.stop()
 
-def is_monolith_user(email: str) -> bool:
-    return bool(email and email.strip().lower().endswith("@monolith.co.kr"))
-
-#def is_monolith_user(email: str) -> bool:
-#    """@monolith.co.kr 도메인 이메일만 허용"""
-#    if not email:
-#        return False
-#    return email.strip().lower().endswith("@monolith.co.kr")
-
-#email, name = get_current_user()
-#if not is_monolith_user(email):
-#    st.error("🚫 monolith.co.kr 도메인 계정만 접근 가능합니다.")
-#    st.stop()
 
 # 사이드바
 render_sidebar(active="IssueForm")

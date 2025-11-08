@@ -6,7 +6,7 @@ import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
+from menu_ui import render_sidebar, get_current_user, is_tech_support, AUTHORIZED_USERS
 
 
 st.markdown("""
@@ -16,7 +16,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
+email, name = get_current_user()
+if not is_tech_support(email):
+    st.error("🚫 접근 권한이 없습니다. (기술지원 전용 페이지)")
+    st.stop()
+    
 # ─────────────────────────────────────────────
 # 📦 포지션 시트로 장애 이동 함수
 # ─────────────────────────────────────────────
@@ -73,12 +77,6 @@ def move_issue_to_position(payload, gc):
 # ─────────────────────────────────────────────
 st.set_page_config(page_title="🧰 장애 처리", layout="wide")
 render_sidebar(active="IssueManage")
-
-email, name = get_current_user()
-if email not in AUTHORIZED_USERS:
-    st.error("🚫 접근 권한이 없습니다. (기술지원 전용 페이지)")
-    st.stop()
-
 
 # ─────────────────────────────────────────────
 # 🔐 Google 인증

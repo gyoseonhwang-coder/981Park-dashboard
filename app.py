@@ -10,7 +10,7 @@ import io
 import re
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
+from menu_ui import render_sidebar, get_current_user,  is_tech_support, AUTHORIZED_USERS
 
 st.markdown("""
     <style>
@@ -29,9 +29,7 @@ st.set_page_config(page_title="📊 981Park Dashboard", layout="wide")
 # 👤 사용자 인증 및 권한 확인
 # ─────────────────────────────────────────────
 email, name = get_current_user()
-if not email:
-    st.stop()
-if email not in AUTHORIZED_USERS:
+if not is_tech_support(email):
     st.error("🚫 접근 권한이 없습니다. (기술지원 전용 페이지)")
     st.stop()
 
