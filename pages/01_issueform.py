@@ -5,7 +5,7 @@ from google.oauth2.service_account import Credentials
 import requests
 import time
 from datetime import datetime, timezone, timedelta
-from menu_ui import render_sidebar
+from menu_ui import render_sidebar, get_current_user, is_monolith_user
 
 st.markdown("""
     <style>
@@ -14,6 +14,11 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+email, name = get_current_user()
+if not is_monolith_user(email):
+    st.error("🚫 monolith.co.kr 도메인 계정만 접근 가능합니다.")
+    st.stop()
+    
 # ─────────────────────────────────────────────
 # 📡 Google Chat Webhook 전송 함수
 # ─────────────────────────────────────────────
