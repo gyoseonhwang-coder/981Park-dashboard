@@ -95,10 +95,10 @@ def render_sidebar(active=None):
     if email in AUTHORIZED_EMAILS:
         st.sidebar.divider()
         with st.sidebar.expander("💼 기술지원", expanded=True):
+            st.page_link("pages/daily_report.py", label="📅 Daily")
             st.page_link("app.py", label="📊 Dashboard")
             st.page_link("pages/02_issue_manage.py", label="🧾 장애 처리")
-            st.page_link("pages/daily_report.py", label="📅 Daily")
-
+         
     else:
         st.sidebar.divider()
         st.sidebar.info("🔒 기술지원 전용 메뉴는 접근 권한이 없습니다.")
