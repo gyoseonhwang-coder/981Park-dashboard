@@ -14,11 +14,17 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+def is_monolith_user(email: str) -> bool:
+    """@monolith.co.kr 도메인 이메일만 허용"""
+    if not email:
+        return False
+    return email.strip().lower().endswith("@monolith.co.kr")
+
 email, name = get_current_user()
 if not is_monolith_user(email):
     st.error("🚫 monolith.co.kr 도메인 계정만 접근 가능합니다.")
     st.stop()
-    
+
 # ─────────────────────────────────────────────
 # 📡 Google Chat Webhook 전송 함수
 # ─────────────────────────────────────────────
