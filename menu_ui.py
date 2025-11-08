@@ -17,6 +17,7 @@ AUTHORIZED_EMAILS = list(AUTHORIZED_USERS.keys())
 # ─────────────────────────────
 ALLOWED_DOMAIN = "@monolith.co.kr"
 
+
 # ─────────────────────────────
 # ✅ 사용자 인증 (도메인 기반)
 # ─────────────────────────────
