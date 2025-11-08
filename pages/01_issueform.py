@@ -35,7 +35,7 @@ def is_monolith_user(email: str) -> bool:
 #    st.stop()
 
 # 사이드바
-#render_sidebar(active="IssueForm")
+render_sidebar(active="IssueForm")
 
 # ─────────────────────────────────────────────
 # 📡 Google Chat Webhook 전송 함수
