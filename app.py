@@ -200,6 +200,7 @@ default_index = len(available_months) - 1 if available_months else 0
 
 # ✅ 월 선택 박스
 selected_month = st.selectbox(
+    "📅 조회할 월 선택",
     available_months,
     index=default_index,
     key="month_selector"
@@ -370,6 +371,7 @@ df_stats["포지션"] = df_stats["포지션"].astype(str).str.strip()
 # ────────────────────────────────
 available_months = sorted(df_stats["월"].unique())
 selected_month = st.selectbox(
+    "📅 조회할 월 선택",
     available_months,
     index=len(available_months) - 1 if available_months else 0,
     key="top5_month_selector"
@@ -449,11 +451,12 @@ div[data-testid="stPlotlyChart"]:hover {
 """, unsafe_allow_html=True)
 
 st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
+st.divider()
+
 
 # ─────────────────────────────────────────────
 # 📊 기타 통계 요약 (원본 유지)
 # ─────────────────────────────────────────────
-st.divider()
 st.subheader("📈 기타 통계 요약")
 
 # ✅ CSV 다시 로드 (같은 파일 다른 시트)
