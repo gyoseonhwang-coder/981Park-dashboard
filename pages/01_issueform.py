@@ -14,6 +14,9 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+email, name = get_current_user()
+st.warning(f"현재 로그인된 이메일: {repr(email)}")  # repr()로 공백, 문자열형태 확인
+
 def is_monolith_user(email: str) -> bool:
     """@monolith.co.kr 도메인 이메일만 허용"""
     if not email:
