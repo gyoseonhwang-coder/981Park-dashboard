@@ -14,19 +14,15 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
 email, name = get_current_user()
 
 if not is_monolith_user(email):
     st.error("🚫 회사 이메일(@monolith.co.kr)만 접근 가능합니다.")
     st.stop()
 
-
-# 사이드바
 render_sidebar(active="IssueForm")
 
-# ─────────────────────────────────────────────
-# 📡 Google Chat Webhook 전송 함수
-# ─────────────────────────────────────────────
 def send_google_chat_alert(form_data: dict):
     """Google Chat Webhook 알림 (981Park 장애 접수용)"""
 
@@ -39,14 +35,11 @@ def send_google_chat_alert(form_data: dict):
     now_kst = datetime.now(timezone(timedelta(hours=9)))
     formatted_time = now_kst.strftime("%Y-%m-%d %H:%M")
 
-    # 긴급 여부
     is_urgent = form_data.get("긴급", False)
 
-    # 카드 헤더
     header_color = "#D93025" if is_urgent else "#1A73E8"
     header_title = "🔥 긴급 장애 접수" if is_urgent else "📋 일반 장애 접수"
 
-    # Google Chat 카드 메시지
     card_message = {
         "cardsV2": [
             {
@@ -105,7 +98,6 @@ def send_google_chat_alert(form_data: dict):
         ]
     }
 
-    # 텍스트 백업 메시지
     alert_header = "🚨*[긴급] 장애가 접수되었습니다!*" if is_urgent else "⚙️ *[일반] 장애가 접수되었습니다!*"
     text_message = {
         "text": (
@@ -124,7 +116,6 @@ def send_google_chat_alert(form_data: dict):
     try:
         resp = requests.post(WEBHOOK_URL, json=card_message, timeout=10)
         if resp.status_code != 200:
-            # 카드 실패 시 텍스트 메시지로 재시도
             resp_fallback = requests.post(WEBHOOK_URL, json=text_message, timeout=10)
             st.write("📩 fallback 응답:", resp_fallback.text)
             if resp_fallback.status_code == 200:
@@ -136,14 +127,8 @@ def send_google_chat_alert(form_data: dict):
     except Exception as e:
         st.error(f"❌ Webhook 전송 중 오류: {e}")
 
-# ─────────────────────────────────────────────
-# 🧾 Streamlit UI
-# ─────────────────────────────────────────────
 st.set_page_config(page_title="🧾 981Park 장애 접수", layout="wide", initial_sidebar_state="expanded")
 
-
-
-# Google 인증
 try:
     creds_info = st.secrets["google_service_account"]
 except Exception as e:
@@ -160,9 +145,6 @@ SPREADSHEET_NAME = "981파크 장애관리"
 SHEET_MAPPING = "설비매핑"
 SHEET_LOG = "접수내용"
 
-# ─────────────────────────────────────────────
-# 📘 데이터 로드
-# ─────────────────────────────────────────────
 @st.cache_data(ttl=300)
 def load_mapping_sheet():
     ws = gc.open(SPREADSHEET_NAME).worksheet(SHEET_MAPPING)
@@ -190,18 +172,11 @@ def get_recent_issues_by_position(position_name: str) -> pd.DataFrame:
         df = df.sort_values("날짜", ascending=False).head(10)
     return df[["날짜", "위치", "설비명", "세부장치", "장애내용", "작성자"]].fillna("")
 
-
-# ─────────────────────────────────────────────
-# 메인 UI
-# ─────────────────────────────────────────────
 st.title("🧾 981Park 장애 접수")
 
 df_map = load_mapping_sheet()
 col_form, col_recent = st.columns([1.3, 0.9], gap="large")
 
-# ─────────────────────────────────────────────
-# 📋 장애 접수 폼
-# ─────────────────────────────────────────────
 with col_form:
     st.subheader("📋 장애 접수 등록")
 
@@ -209,11 +184,9 @@ with col_form:
         if key not in st.session_state:
             st.session_state[key] = "" if key != "urgent" else False
 
-    # 포지션 선택
     positions = sorted(df_map["포지션"].dropna().unique()) if not df_map.empty else []
     st.session_state.position = st.selectbox("📍 포지션", [""] + positions, index=0)
 
-    # 위치 선택
     if st.session_state.position:
         locations = sorted(
             df_map[df_map["포지션"] == st.session_state.position]["위치"].dropna().unique()
@@ -222,7 +195,6 @@ with col_form:
         locations = []
     st.session_state.location = st.selectbox("🏗️ 위치", [""] + locations, index=0)
 
-    # 설비명 선택
     if st.session_state.position and st.session_state.location:
         equipments = sorted(
             df_map[
@@ -234,7 +206,6 @@ with col_form:
         equipments = []
     st.session_state.equipment = st.selectbox("⚙️ 설비명", [""] + equipments, index=0)
 
-    # 세부기기
     if st.session_state.equipment:
         row = df_map[
             (df_map.get("포지션") == st.session_state.position)
@@ -249,7 +220,6 @@ with col_form:
         details = []
     st.session_state.detail = st.selectbox("🔩 세부기기", [""] + details, index=0)
 
-    # 장애유형
     try:
         vals = df_map.iloc[:, 33:39].values.flatten().tolist()
         issue_types = sorted({v for v in vals if v and str(v).strip() != ""})
@@ -257,18 +227,15 @@ with col_form:
         issue_types = []
     st.session_state.issue = st.selectbox("🚨 장애유형", [""] + issue_types, index=0)
 
-    # 작성자 & 내용
     st.session_state.reporter = st.text_input("👤 작성자 이름", st.session_state.reporter or "")
     st.session_state.desc = st.text_area("📝 장애 내용 (상세히 작성)", st.session_state.desc or "")
     st.session_state.urgent = st.checkbox("🚨 긴급 장애 (즉시 대응 필요)", value=bool(st.session_state.urgent))
 
-    # 버튼
     if st.button("✅ 장애 접수 등록", use_container_width=True):
         if not (st.session_state.position and st.session_state.location and st.session_state.equipment and st.session_state.reporter and st.session_state.desc):
             st.warning("⚠️ 필수 항목(포지션, 위치, 설비명, 작성자, 내용)을 모두 입력해주세요.")
         else:
             try:
-                # ✅ 시트에 기록
                 sh = gc.open(SPREADSHEET_NAME)
                 log_sheet = sh.worksheet(SHEET_LOG)
                 now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -286,7 +253,6 @@ with col_form:
                 ]
                 log_sheet.append_row(new_row, value_input_option="USER_ENTERED")
 
-                # ✅ Chat 알림 전송
                 payload = {
                     "작성자": st.session_state.reporter,
                     "포지션": st.session_state.position,
@@ -300,7 +266,6 @@ with col_form:
                 st.toast("🚀 Google Chat 알림 전송 중...", icon="💬")
                 send_google_chat_alert(payload)
 
-                # 완료 팝업
                 popup = st.empty()
                 with popup.container():
                     st.markdown(
@@ -325,9 +290,6 @@ with col_form:
             except Exception as e:
                 st.error(f"❌ 전송 중 오류 발생: {e}")
 
-# ─────────────────────────────────────────────
-# 📌 미조치 장애 현황
-# ─────────────────────────────────────────────
 with col_recent:
     st.subheader("📌 미조치 / 점검중 장애 현황")
     if st.session_state.position:

@@ -1,6 +1,3 @@
-# ─────────────────────────────────────────────
-# 📦 IMPORTS
-# ─────────────────────────────────────────────
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -25,20 +22,72 @@ if not email or not email.lower().endswith("@monolith.co.kr"):
     st.error("🚫 회사 이메일(@monolith.co.kr)만 접근 가능합니다.")
     st.stop()
 
-# ─────────────────────────────────────────────
-# ⚙️ 기본 페이지 설정
-# ─────────────────────────────────────────────
 st.set_page_config(page_title="📊 981Park Dashboard", layout="wide")
 
-# ─────────────────────────────────────────────
-# 🧭 사이드바 렌더링
-# ─────────────────────────────────────────────
+st.markdown("""
+<style>
+/* 기본: 안전한 상단 여백 (데스크탑 기준) */
+:root { --top-gap: 48px; } /* 필요시 px값 조절: 40~80 권장 */
+
+div[data-testid="stAppViewContainer"] > .main > div.block-container,
+div[data-testid="stAppViewContainer"] .main .block-container,
+main .block-container,
+div.block-container {
+    padding-top: var(--top-gap) !important;
+    margin-top: 0 !important;
+}
+
+/* 타이틀(헤더) 마진/라인하이트 보정 */
+div.block-container h1, div.block-container h2 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1.05 !important;
+}
+
+/* 상단 툴바(menu)가 겹치는 경우 z-index 보정(툴바가 타이틀 위에 있을 때 비활성화 가능) */
+header, [data-testid="stToolbar"] {
+    position: relative;
+    z-index: 1000;
+}
+
+/* 작은 화면(모바일/좁은) 에선 여백 축소 */
+@media (max-width: 900px) {
+  :root { --top-gap: 20px; }
+  div.block-container h1 { font-size: 1.35rem !important; }
+}
+
+/* 만약 기존 JS/다른 스타일이 계속 0으로 덮어쓴다면, 마지막에 다시 강제 적용 */
+</style>
+
+<script>
+(function(){
+  function ensureTopGap(){
+    try {
+      const gap = getComputedStyle(document.documentElement).getPropertyValue('--top-gap') || '48px';
+      const selectors = [
+        'div[data-testid="stAppViewContainer"] > .main > div.block-container',
+        'div[data-testid="stAppViewContainer"] .main .block-container',
+        'main .block-container',
+        'div.block-container'
+      ];
+      selectors.forEach(s => {
+        const el = document.querySelector(s);
+        if (el) {
+          el.style.paddingTop = gap;
+        }
+      });
+    } catch(e){ console && console.warn && console.warn("ensureTopGap err", e); }
+  }
+  // 즉시 적용 + 지연 적용(동적 DOM 대비)
+  ensureTopGap();
+  setTimeout(ensureTopGap, 150);
+  setTimeout(ensureTopGap, 600);
+})();
+</script>
+""", unsafe_allow_html=True)
+
 render_sidebar(active="Dashboard")
 
-
-# ─────────────────────────────────────────────
-# 🕒 유틸리티 함수
-# ─────────────────────────────────────────────
 KST = ZoneInfo("Asia/Seoul")
 
 def _month_key(label: str) -> int:
@@ -117,9 +166,6 @@ def render_kpi(cards, columns=5):
         )
 
 
-# ─────────────────────────────────────────────
-# 📊 데이터 로드
-# ─────────────────────────────────────────────
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
 
 try:
@@ -138,9 +184,6 @@ df = df.dropna(subset=["날짜"]).copy()
 df["월"] = df["날짜"].dt.strftime("%Y년 %-m월")
 
 
-# ─────────────────────────────────────────────
-# 🧾 KPI & 필터 섹션
-# ─────────────────────────────────────────────
 st.title("🚀 981파크 장애관리 실시간 대시보드")
 st.caption("접수내용 실시간 연동 — 포지션/위치별 상태 분포 및 통계")
 
@@ -177,23 +220,15 @@ render_kpi([
 
 st.divider()
 
-# ────────────────────────────────
-# 📅 월별 장애 접수 현황
-# ────────────────────────────────
 st.subheader("📅 월별 장애 접수 현황")
 
-# ✅ 날짜 컬럼을 기반으로 'YYYY-MM' 형태의 월 컬럼 생성
 if "날짜" in df.columns:
     df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
     df = df.dropna(subset=["날짜"])
     df["월"] = df["날짜"].dt.strftime("%Y-%m")
 
-# ✅ 월 목록 정렬
 available_months = sorted(df["월"].unique())
-# 최신 월을 기본 선택
 default_index = len(available_months) - 1 if available_months else 0
-
-# ✅ 월 선택 박스
 selected_month = st.selectbox(
     "조회할 월 선택",
     available_months,
@@ -201,11 +236,9 @@ selected_month = st.selectbox(
     key="month_selector"
 )
 
-# ✅ 선택된 월 데이터 필터링
 df_month = df[df["월"] == selected_month]
 m_total, m_prog, m_pend, m_done, m_rate = status_counts(df_month)
 
-# ✅ KPI 출력
 render_kpi([
     (f"{selected_month} 전체 접수", f"{m_total}", "c-blue"),
     ("점검중", f"{m_prog}", "c-orange"),
@@ -214,18 +247,10 @@ render_kpi([
     ("완료율", f"{m_rate:0.1f}%", "c-navy"),
 ])
 
-
-st.divider()
-
-# ────────────────────────────────
-# 📊 월별 장애 접수 및 완료율 추이
-# ────────────────────────────────
-
 st.divider()
 
 st.subheader("📊 월별 장애 접수 및 완료율 추이")
 
-# ✅ 월 컬럼 보정 (필수!)
 if "날짜" in df.columns:
     df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce")
     df["월"] = df["날짜"].dt.strftime("%Y-%m")
@@ -292,17 +317,10 @@ if not df_f.empty:
 else:
     st.info("선택한 필터에 해당하는 데이터가 없습니다.")
 
-
-
 st.divider()
 
-
-# ────────────────────────────────
-# 📍 포지션별 장애 상태 분포
-# ────────────────────────────────
 st.subheader("📍 포지션별 장애 상태 분포")
 
-# ✅ CSV 불러오기
 try:
     url_stats = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=1138857357"
     raw = pd.read_csv(url_stats, header=None, dtype=str, encoding="utf-8")
@@ -310,27 +328,18 @@ except Exception as e:
     st.error(f"❌ 장애통계 시트를 불러오지 못했습니다: {e}")
     st.stop()
 
-# ────────────────────────────────
-# 🔹 CSV 전처리
-# ────────────────────────────────
 raw = raw.applymap(lambda x: x.strip() if isinstance(x, str) else x)
 raw = raw.dropna(how="all").reset_index(drop=True)
 
-# ✅ 제목은 D열(index=3), 데이터는 D:E(3:5)
 first_col = raw.iloc[:, 3].astype(str)
 first_col = first_col.str.replace(
     r"[\u200B-\u200D\uFEFF\xa0]", "", regex=True).str.strip()
 
-# ✅ "📅 YYYY-MM 포지션 TOP5" 제목 감지
 month_title_idx = first_col[first_col.str.contains(
     r"20\d{2}[-./]?\d{2}.*TOP5", na=False, case=False)].index.tolist()
 
-# st.write("📋 감지된 제목 인덱스:", month_title_idx)
 month_blocks = []
 
-# ────────────────────────────────
-# 🔹 월별 블록 추출
-# ────────────────────────────────
 for i, idx in enumerate(month_title_idx):
     title_text = str(raw.iloc[idx, 3])
     m = re.search(r"(\d{4}[-./]?\d{2})", title_text)
@@ -349,9 +358,6 @@ for i, idx in enumerate(month_title_idx):
         block["전체접수"], errors="coerce") - block["미조치"]).clip(lower=0)
     month_blocks.append(block)
 
-# ────────────────────────────────
-# 🔹 유효성 검사
-# ────────────────────────────────
 if not month_blocks:
     st.error("⚠️ 장애통계 시트에서 유효한 월별 데이터 블록을 찾지 못했습니다.")
     st.stop()
@@ -361,9 +367,6 @@ df_stats["전체접수"] = pd.to_numeric(
     df_stats["전체접수"], errors="coerce").fillna(0).astype(int)
 df_stats["포지션"] = df_stats["포지션"].astype(str).str.strip()
 
-# ────────────────────────────────
-# 🔹 월 선택 UI
-# ────────────────────────────────
 available_months = sorted(df_stats["월"].unique())
 selected_month = st.selectbox(
     "조회할 월 선택",
@@ -373,9 +376,6 @@ selected_month = st.selectbox(
 )
 df_m = df_stats[df_stats["월"] == selected_month].copy()
 
-# ────────────────────────────────
-# 🔹 그래프 생성
-# ────────────────────────────────
 df_long = df_m.melt(
     id_vars="포지션",
     value_vars=["조치완료", "미조치"],
@@ -426,9 +426,6 @@ fig.update_layout(
     margin=dict(l=60, r=40, t=80, b=40),
 )
 
-# ────────────────────────────────
-# 🔹 스타일 + 출력
-# ────────────────────────────────
 st.markdown("""
 <style>
 div[data-testid="stPlotlyChart"] {
@@ -446,22 +443,17 @@ div[data-testid="stPlotlyChart"]:hover {
 """, unsafe_allow_html=True)
 
 st.plotly_chart(fig, use_container_width=True, config={"responsive": True})
+
 st.divider()
 
-
-# ─────────────────────────────────────────────
-# 📊 기타 통계 요약 (원본 유지)
-# ─────────────────────────────────────────────
 st.subheader("📈 기타 통계 요약")
 
-# ✅ CSV 다시 로드 (같은 파일 다른 시트)
 try:
     url_stats = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=1138857357"
     raw_stats = pd.read_csv(url_stats, header=None, dtype=str)
 except Exception as e:
     st.error(f"❌ 장애통계 시트 로드 실패: {e}")
     st.stop()
-
 
 def extract_block(df, start, end):
     """주어진 행 범위(A열~B열)에서 통계 블록 추출"""
@@ -471,15 +463,12 @@ def extract_block(df, start, end):
     block["건수"] = pd.to_numeric(block["건수"], errors="coerce").fillna(0).astype(int)
     return block
 
-
-# 개별 블록 추출
 block_gubun = extract_block(raw_stats, 25, 30)
 block_type = extract_block(raw_stats, 33, 38)
 block_gun = extract_block(raw_stats, 41, 44)
 block_keyword = extract_block(raw_stats, 47, 56)
 
 color_seq = ["#4e79a7", "#59a14f", "#f28e2b", "#e15759", "#76b7b2", "#edc948"]
-
 
 def render_bar(df_block, title, container):
     fig = px.bar(

@@ -7,29 +7,88 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
 
-# ─────────────────────────────────────────────
-# 🔐 접근 권한 확인
-# ─────────────────────────────────────────────
+st.markdown("""
+    <style>
+    [data-testid="stSidebarNav"] {display: none !important;}
+    section[data-testid="stSidebar"] div[role="listbox"] {display: none !important;}
+    </style>
+""", unsafe_allow_html=True)
+
 email, name = get_current_user()
 
-# 기술지원 3명만 접근 허용
 if not email or email.strip().lower() not in [e.lower() for e in AUTHORIZED_USERS]:
     st.error("🚫 이 메뉴는 기술지원 전용입니다.")
     st.stop()
 
-# ─────────────────────────────────────────────
-# 📄 페이지 기본 설정
-# ─────────────────────────────────────────────
 st.set_page_config(page_title="📅 Daily 현황", layout="wide")
+
+st.markdown("""
+<style>
+/* 기본: 안전한 상단 여백 (데스크탑 기준) */
+:root { --top-gap: 48px; } /* 필요시 px값 조절: 40~80 권장 */
+
+div[data-testid="stAppViewContainer"] > .main > div.block-container,
+div[data-testid="stAppViewContainer"] .main .block-container,
+main .block-container,
+div.block-container {
+    padding-top: var(--top-gap) !important;
+    margin-top: 0 !important;
+}
+
+/* 타이틀(헤더) 마진/라인하이트 보정 */
+div.block-container h1, div.block-container h2 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1.05 !important;
+}
+
+/* 상단 툴바(menu)가 겹치는 경우 z-index 보정(툴바가 타이틀 위에 있을 때 비활성화 가능) */
+header, [data-testid="stToolbar"] {
+    position: relative;
+    z-index: 1000;
+}
+
+/* 작은 화면(모바일/좁은) 에선 여백 축소 */
+@media (max-width: 900px) {
+  :root { --top-gap: 20px; }
+  div.block-container h1 { font-size: 1.35rem !important; }
+}
+
+/* 만약 기존 JS/다른 스타일이 계속 0으로 덮어쓴다면, 마지막에 다시 강제 적용 */
+</style>
+
+<script>
+(function(){
+  function ensureTopGap(){
+    try {
+      const gap = getComputedStyle(document.documentElement).getPropertyValue('--top-gap') || '48px';
+      const selectors = [
+        'div[data-testid="stAppViewContainer"] > .main > div.block-container',
+        'div[data-testid="stAppViewContainer"] .main .block-container',
+        'main .block-container',
+        'div.block-container'
+      ];
+      selectors.forEach(s => {
+        const el = document.querySelector(s);
+        if (el) {
+          el.style.paddingTop = gap;
+        }
+      });
+    } catch(e){ console && console.warn && console.warn("ensureTopGap err", e); }
+  }
+  // 즉시 적용 + 지연 적용(동적 DOM 대비)
+  ensureTopGap();
+  setTimeout(ensureTopGap, 150);
+  setTimeout(ensureTopGap, 600);
+})();
+</script>
+""", unsafe_allow_html=True)
+
 render_sidebar(active="Daily")
 
 KST = ZoneInfo("Asia/Seoul")
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1Gm0GPsWm1H9fPshiBo8gpa8djwnPa4ordj9wWTGG_vI/export?format=csv&gid=389240943"
 
-
-# ─────────────────────────────────────────────
-# 📦 데이터 로드 함수
-# ─────────────────────────────────────────────
 def fetch_csv(url: str) -> pd.DataFrame:
     """Google Sheets CSV 안전 로드"""
     resp = requests.get(url, timeout=15)
@@ -45,10 +104,6 @@ def fetch_csv(url: str) -> pd.DataFrame:
     df = df.loc[:, ~df.columns.str.contains(r"^Unnamed", na=False)]
     return df
 
-
-# ─────────────────────────────────────────────
-# 🕓 날짜 파싱 함수
-# ─────────────────────────────────────────────
 def parse_jeju_date(val):
     """981파크 접수내용 날짜 파서"""
     if pd.isna(val):
@@ -75,10 +130,6 @@ def parse_jeju_date(val):
             pass
     return pd.to_datetime(s, errors="coerce")
 
-
-# ─────────────────────────────────────────────
-# 📊 상태 표준화
-# ─────────────────────────────────────────────
 def normalize_status(s):
     if pd.isna(s):
         return "미정의"
@@ -91,10 +142,6 @@ def normalize_status(s):
         return "완료"
     return sv
 
-
-# ─────────────────────────────────────────────
-# 📈 KPI 계산 함수
-# ─────────────────────────────────────────────
 def status_counts(frame: pd.DataFrame):
     total = len(frame)
     vc = frame["상태"].value_counts()
@@ -104,10 +151,6 @@ def status_counts(frame: pd.DataFrame):
     rate = (done / total * 100) if total else 0.0
     return total, prog, pend, done, rate
 
-
-# ─────────────────────────────────────────────
-# 🎨 KPI 카드 렌더링
-# ─────────────────────────────────────────────
 def render_kpi(cards, columns=5):
     st.markdown(
         """
@@ -142,10 +185,6 @@ def render_kpi(cards, columns=5):
             unsafe_allow_html=True,
         )
 
-
-# ─────────────────────────────────────────────
-# 📥 데이터 로드
-# ─────────────────────────────────────────────
 try:
     df = fetch_csv(SHEET_URL)
 except Exception as e:
@@ -160,9 +199,6 @@ df["날짜"] = df["날짜"].apply(parse_jeju_date)
 df["상태"] = df["접수처리"].apply(normalize_status)
 df = df.dropna(subset=["날짜"]).copy()
 
-# ─────────────────────────────────────────────
-# 📅 금일 접수 현황
-# ─────────────────────────────────────────────
 st.title("📅 Daily 장애 접수 현황")
 
 today_kst = datetime.now(tz=KST).date()
@@ -179,9 +215,6 @@ render_kpi([
 
 st.divider()
 
-# ─────────────────────────────────────────────
-# 🧾 금일 장애 목록
-# ─────────────────────────────────────────────
 st.subheader("🧾 금일 장애 접수 목록")
 pending = df_today[df_today["상태"].isin(["미조치(접수중)", "점검중"])]
 cols_show = [c for c in ["날짜", "포지션", "위치", "설비명", "장애내용", "상태", "점검자"] if c in pending.columns]

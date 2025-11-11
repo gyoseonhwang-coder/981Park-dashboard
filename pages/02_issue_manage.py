@@ -1,12 +1,10 @@
-# ─────────────────────────────────────────────
-# 📦 Imports
-# ─────────────────────────────────────────────
 import streamlit as st
 import gspread
 import pandas as pd
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
+import html
 
 
 st.markdown("""
@@ -18,15 +16,10 @@ st.markdown("""
 
 email, name = get_current_user()
 
-# 기술지원 3명만 접근 허용
 if not email or email.strip().lower() not in [e.lower() for e in AUTHORIZED_USERS]:
     st.error("🚫 이 메뉴는 기술지원 전용입니다.")
     st.stop()
 
-
-# ─────────────────────────────────────────────
-# 📦 포지션 시트로 장애 이동 함수
-# ─────────────────────────────────────────────
 def move_issue_to_position(payload, gc):
     """981파크 장애관리 - 접수내용 → 포지션 시트 이동"""
     try:
@@ -38,7 +31,6 @@ def move_issue_to_position(payload, gc):
             st.warning("⚠️ 포지션 정보가 없어 포지션 시트로 이동하지 못했습니다.")
             return
 
-        # 시트 존재 확인 (없으면 생성)
         try:
             target_ws = sh.worksheet(position)
         except Exception:
@@ -50,7 +42,6 @@ def move_issue_to_position(payload, gc):
             ]
             target_ws.append_row(headers)
 
-        # 추가할 데이터 구성
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         new_row = [
             "긴급" if payload.get("긴급") else "일반",
@@ -73,17 +64,72 @@ def move_issue_to_position(payload, gc):
     except Exception as e:
         st.error(f"❌ 포지션 시트 이동 중 오류 발생: {e}")
 
-
-
-# ─────────────────────────────────────────────
-# ⚙️ Page Setup & Auth
-# ─────────────────────────────────────────────
 st.set_page_config(page_title="🧰 장애 처리", layout="wide")
+
+st.markdown("""
+<style>
+/* 기본: 안전한 상단 여백 (데스크탑 기준) */
+:root { --top-gap: 48px; } /* 필요시 px값 조절: 40~80 권장 */
+
+div[data-testid="stAppViewContainer"] > .main > div.block-container,
+div[data-testid="stAppViewContainer"] .main .block-container,
+main .block-container,
+div.block-container {
+    padding-top: var(--top-gap) !important;
+    margin-top: 0 !important;
+}
+
+/* 타이틀(헤더) 마진/라인하이트 보정 */
+div.block-container h1, div.block-container h2 {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    line-height: 1.05 !important;
+}
+
+/* 상단 툴바(menu)가 겹치는 경우 z-index 보정(툴바가 타이틀 위에 있을 때 비활성화 가능) */
+header, [data-testid="stToolbar"] {
+    position: relative;
+    z-index: 1000;
+}
+
+/* 작은 화면(모바일/좁은) 에선 여백 축소 */
+@media (max-width: 900px) {
+  :root { --top-gap: 20px; }
+  div.block-container h1 { font-size: 1.35rem !important; }
+}
+
+/* 만약 기존 JS/다른 스타일이 계속 0으로 덮어쓴다면, 마지막에 다시 강제 적용 */
+</style>
+
+<script>
+(function(){
+  function ensureTopGap(){
+    try {
+      const gap = getComputedStyle(document.documentElement).getPropertyValue('--top-gap') || '48px';
+      const selectors = [
+        'div[data-testid="stAppViewContainer"] > .main > div.block-container',
+        'div[data-testid="stAppViewContainer"] .main .block-container',
+        'main .block-container',
+        'div.block-container'
+      ];
+      selectors.forEach(s => {
+        const el = document.querySelector(s);
+        if (el) {
+          el.style.paddingTop = gap;
+        }
+      });
+    } catch(e){ console && console.warn && console.warn("ensureTopGap err", e); }
+  }
+  // 즉시 적용 + 지연 적용(동적 DOM 대비)
+  ensureTopGap();
+  setTimeout(ensureTopGap, 150);
+  setTimeout(ensureTopGap, 600);
+})();
+</script>
+""", unsafe_allow_html=True)
+
 render_sidebar(active="IssueManage")
 
-# ─────────────────────────────────────────────
-# 🔐 Google 인증
-# ─────────────────────────────────────────────
 try:
     creds_info = st.secrets["google_service_account"]
     creds = Credentials.from_service_account_info(
@@ -101,10 +147,6 @@ except Exception:
 SPREADSHEET_NAME = "981파크 장애관리"
 SHEET_LOG = "접수내용"
 
-
-# ─────────────────────────────────────────────
-# 📘 데이터 로드
-# ─────────────────────────────────────────────
 @st.cache_data(ttl=30)
 def load_issue_log() -> pd.DataFrame:
     """981파크 장애관리 > 접수내용 시트 전체 로드"""
@@ -127,18 +169,145 @@ def load_issue_log() -> pd.DataFrame:
     })
     return df
 
-
-# ─────────────────────────────────────────────
-# 🧾 메인 UI
-# ─────────────────────────────────────────────
 st.title("🧰 981Park 장애 처리")
 st.caption(f"접속 계정: {email}")
+
+def render_pending_alerts(df, max_items=5, show_details=False):
+    """
+    상단 알림용 큰 카드 3개 표시. 기본적으로 상세 리스트는 숨김 (show_details=False).
+    - df: load_issue_log()로 읽은 DataFrame
+    - max_items: 상세 보기 시 최대 표시 건수
+    """
+    try:
+        if df is None or df.empty:
+            return
+
+        status_col = None
+        for c in ["상태", "접수처리", "접수", "status", "처리상태"]:
+            if c in df.columns:
+                status_col = c
+                break
+        if status_col is None:
+            for c in df.columns:
+                if "접수" in c or "처리" in c or "status" in c.lower():
+                    status_col = c
+                    break
+        if status_col is None:
+            return
+
+        mask_pending = df[status_col].astype(str).str.contains(r"접수중|^접수$|접수\b", na=False)
+        mask_not_checking = ~df[status_col].astype(str).str.contains("점검중", na=False)
+        pending_df = df[mask_pending & mask_not_checking].copy()
+
+        total_pending = len(pending_df)
+
+        import re
+
+        priority_candidates = [c for c in df.columns if re.search(r'우선|priority', str(c), re.I)]
+        priority_col = priority_candidates[0] if priority_candidates else None
+
+        urgent_count = 0
+        if priority_col and priority_col in pending_df.columns:
+            urgent_count = int(pending_df[priority_col].astype(str).str.contains(r'긴급|urgent', na=False).sum())
+        else:
+            mask_urgent = pending_df.apply(
+                lambda row: row.astype(str).str.contains(r'\b긴급\b|\burgent\b', case=False, na=False).any(),
+                axis=1
+            )
+            urgent_count = int(mask_urgent.sum())
+
+        st.markdown(
+            """
+            <style>
+            .pending-card {
+                padding:20px 22px;
+                border-radius:12px;
+                border:1px solid rgba(0,0,0,0.06);
+                background: linear-gradient(180deg, #ffffff, #fbfdff);
+                box-shadow: 0 6px 18px rgba(29, 41, 58, 0.04);
+                margin-bottom:12px;
+            }
+            .pending-count {
+                font-size:26px;
+                font-weight:800;
+                color:#0b5394;
+                margin-top:6px;
+            }
+            .pending-title { font-size:15px; font-weight:700; color:#2c7be5; }
+            .pending-sub { font-size:13px; color:#6b7280; margin-top:6px; }
+            .pending-row { gap: 18px; display:flex; align-items:stretch; }
+            @media (max-width: 900px) { .pending-row { flex-direction: column; } }
+            .pending-list { margin-top:8px; padding-left:6px; }
+            .pending-item { margin-bottom:6px; color:#333; }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
+
+        col1, col2, col3 = st.columns([1,1,2])
+        col1.markdown(
+            f"""
+            <div class="pending-card">
+              <div class="pending-title">📥 접수중</div>
+              <div class="pending-count">{total_pending}</div>
+              <div class="pending-sub">점검 처리되지 않은 장애</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        col2.markdown(
+            f"""
+            <div class="pending-card">
+              <div class="pending-title">🚨 긴급</div>
+              <div class="pending-count">{urgent_count}</div>
+              <div class="pending-sub">긴급 표기가 된 접수 건수</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+
+        if show_details and total_pending > 0:
+            date_col = next((c for c in ["날짜", "접수일", "date", "등록일"] if c in df.columns), None)
+            if date_col:
+                pending_df[date_col] = pd.to_datetime(pending_df[date_col], errors="coerce")
+                pending_df = pending_df.sort_values(by=date_col, ascending=False)
+
+            show_df = pending_df.head(max_items)
+            if not show_df.empty:
+                st.markdown("<div class='pending-list'>", unsafe_allow_html=True)
+                for _, r in show_df.iterrows():
+                    parts = []
+                    if "포지션" in r.index and r.get("포지션"): parts.append(str(r.get("포지션")))
+                    elif "위치" in r.index and r.get("위치"): parts.append(str(r.get("위치")))
+                    if "설비명" in r.index and r.get("설비명"): parts.append(str(r.get("설비명")))
+                    desc = str(r.get("장애내용", "")).strip()
+                    date_str = ""
+                    if date_col:
+                        dt = pd.to_datetime(r.get(date_col), errors="coerce")
+                        if not pd.isna(dt):
+                            try:
+                                date_str = dt.strftime("%m-%d %H:%M")
+                            except:
+                                date_str = str(r.get(date_col))
+                    line = " / ".join(parts) + (" — " + desc if desc else "")
+                    if date_str:
+                        line = f"{line} ({date_str})"
+                    st.markdown(f"<div class='pending-item'>{html.escape(line)}</div>", unsafe_allow_html=True)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+    except Exception:
+        return
+
+
 st.divider()
 
 df = load_issue_log()
+
 if df.empty:
     st.warning("⚠️ 접수내용 시트에 데이터가 없습니다.")
     st.stop()
+
+render_pending_alerts(df, max_items=6)
 
 pending = df[df["상태"].isin(["미조치(접수중)", "점검중"])].copy()
 pending = pending.sort_values("날짜", ascending=False)
@@ -148,10 +317,6 @@ st.dataframe(pending[cols_show], use_container_width=True, height=320)
 
 st.divider()
 
-
-# ─────────────────────────────────────────────
-# 🎯 처리할 장애 선택
-# ─────────────────────────────────────────────
 st.markdown("""
 <style>
 div[data-baseweb="select"] span {
@@ -184,12 +349,6 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-
-# ─────────────────────────────────────────────
-# 👷 조치 입력 & 상태 변경
-# ─────────────────────────────────────────────
-
-
 담당자 = st.text_input("👷 점검자 이름", issue.get("점검자", ""))
 포지션_이동 = st.selectbox(
     "📍 포지션 시트로 이동 (선택 안 함 가능)",
@@ -209,10 +368,6 @@ if match.empty:
 
 row_index = match.index[0] + 2
 
-
-# ─────────────────────────────────────────────
-# 🚧 접수중 → 점검중
-# ─────────────────────────────────────────────
 if issue.get("상태") == "미조치(접수중)":
     st.info("📩 아직 조치되지 않은 장애입니다. 점검 시작 시 아래 버튼을 클릭하세요.")
     if st.button("🚧 장애 접수 (→ 점검중)", use_container_width=True):
@@ -221,8 +376,6 @@ if issue.get("상태") == "미조치(접수중)":
             ws.update_cell(row_index, 12, 담당자)
             ws.update_cell(row_index, 11, 포지션_이동 if 포지션_이동 != "선택 안 함" else "")
             
-
-            # ✅ 포지션 시트 자동 이동
             if 포지션_이동 != "선택 안 함":
                 ws.update_cell(row_index, 15, "장애 등록")
 
@@ -241,10 +394,6 @@ if issue.get("상태") == "미조치(접수중)":
         except Exception as e:
             st.error(f"❌ 장애 접수 중 오류 발생: {e}")
 
-
-# ─────────────────────────────────────────────
-# 🧰 점검중 → 완료
-# ─────────────────────────────────────────────
 elif issue.get("상태") == "점검중":
     st.info("🧰 점검이 완료되면 아래 내용을 입력 후 완료 처리하세요.")
     점검내용 = st.text_area("🔧 점검내용", height=120, placeholder="점검 결과나 조치 내용을 입력하세요.")
