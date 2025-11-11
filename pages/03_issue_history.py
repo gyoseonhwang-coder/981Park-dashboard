@@ -12,6 +12,8 @@ from datetime import datetime, timedelta
 from typing import Optional
 from menu_ui import render_sidebar
 
+st.set_page_config(page_title="장애 조치 이력", layout="wide")
+
 st.markdown("""
     <style>
     [data-testid="stSidebarNav"] {display: none !important;}
@@ -21,7 +23,7 @@ st.markdown("""
 
 render_sidebar(active="IssueHistory")
 
-st.set_page_config(page_title="장애 조치 이력", layout="wide")
+
 
 st.markdown("""
 <style>
