@@ -73,8 +73,8 @@ def render_sidebar(active=None):
         with st.sidebar.expander("🧑‍✈️ 기술지원", expanded=True):
             st.page_link("pages/daily_report.py", label="📅 Daily")
             st.page_link("app.py", label="📊 Dashboard")
-            st.page_link("pages/02_issue_manage.py", label="🧾 장애 처리")
-            st.page_link("pages/03_issue_history.py", label="🧾 장애 이력")
+            st.page_link("pages/02_issue_manage.py", label="⚙️ 장애 처리")
+            st.page_link("pages/03_issue_history.py", label="⚙️ 장애 이력")
          
     else:
         st.sidebar.divider()

@@ -296,7 +296,7 @@ st.markdown("<style>"
             ".table-wrap table{border-collapse:collapse;width:100%} .table-wrap th, .table-wrap td{padding:8px;border-bottom:1px solid #eee;font-size:13px}"
             "</style>", unsafe_allow_html=True)
 
-st.title("✅ 장애 이력 (완료)")
+st.title("✅ 조치완료 장애 이력")
 st.caption("Apps Script의 '완료'/'종결' 기준으로 완료 처리된 항목만 표시합니다.")
 
 try:
