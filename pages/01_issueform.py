@@ -27,7 +27,7 @@ def send_google_chat_alert(form_data: dict):
     """Google Chat Webhook 알림 (981Park 장애 접수용)"""
 
     WEBHOOK_URL = (
-        "chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
+        "https://chat.googleapis.com/v1/spaces/AAAA-Dl8vDs/messages"
         "?key=AIzaSyDdI0hCZtE6vySjMm-WEfRq3CPzqKqqsHI"
         "&token=qpitTslB-dlzAaxy3nqBCSfSxOcjm1ly6vYWDTaPRB8"
     )
