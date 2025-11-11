@@ -9,6 +9,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from menu_ui import render_sidebar, get_current_user
 
+st.set_page_config(page_title="📊 981Park Dashboard", layout="wide")
+
 st.markdown("""
     <style>
     [data-testid="stSidebarNav"] {display: none !important;}
@@ -22,7 +24,7 @@ if not email or not email.lower().endswith("@monolith.co.kr"):
     st.error("🚫 회사 이메일(@monolith.co.kr)만 접근 가능합니다.")
     st.stop()
 
-st.set_page_config(page_title="📊 981Park Dashboard", layout="wide")
+
 
 st.markdown("""
 <style>
