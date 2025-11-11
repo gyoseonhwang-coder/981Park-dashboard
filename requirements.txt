@@ -1,55 +1,36 @@
-altair==5.5.0
-attrs==25.4.0
-blinker==1.9.0
-cachetools==6.2.1
-certifi==2025.10.5
-charset-normalizer==3.4.4
-click==8.3.0
-colorama==0.4.6
-et_xmlfile==2.0.0
-gitdb==4.0.12
-GitPython==3.1.45
-idna==3.11
-Jinja2==3.1.6
-jsonschema==4.25.1
-jsonschema-specifications==2025.9.1
-MarkupSafe==3.0.3
-narwhals==2.9.0
-numpy==2.3.4
-openpyxl==3.1.5
-packaging==25.0
+# ===================================
+# 981Park Dashboard (Stable Build)
+# Streamlit Cloud Compatible
+# ===================================
+
+# Core
+streamlit==1.51.0
 pandas==2.3.3
-pillow==11.3.0
-plotly==6.3.1
-protobuf==6.33.0
-pyarrow==22.0.0
-pydeck==0.9.1
+numpy==2.3.4
 python-dateutil==2.9.0.post0
 pytz==2025.2
-referencing==0.37.0
-requests==2.32.5
-rpds-py==0.28.0
-six==1.17.0
-smmap==5.0.2
-streamlit==1.50.0
-tenacity==9.1.2
-toml==0.10.2
-tornado==6.5.2
-typing_extensions==4.15.0
 tzdata==2025.2
-urllib3==2.5.0
+requests==2.32.3
+
+# Google API
+gspread==6.1.4
+google-auth==2.35.0
+google-auth-oauthlib==1.2.1
+google-auth-httplib2==0.2.0
+
+# Streamlit Extensions
+streamlit-aggrid==0.3.4
+streamlit-js-eval==0.1.7
+
+# Visualization
+plotly==6.3.1
+pydeck==0.9.1
+altair==5.5.0
+
+# Utility
+openpyxl==3.1.5
 watchdog==6.0.0
-streamlit
-pandas
-plotly
-gspread
-google-auth
-google-auth-oauthlib
-google-auth-httplib2
-streamlit-js-eval
-chardet
-streamlit==1.51.0
-pandas
-gspread
-google-auth
-streamlit-aggrid
+protobuf==6.33.0
+typing_extensions==4.15.0
+cachetools==6.2.1
+gitpython==3.1.45
