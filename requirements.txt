@@ -48,3 +48,8 @@ google-auth-oauthlib
 google-auth-httplib2
 streamlit-js-eval
 chardet
+streamlit==1.51.0
+pandas
+gspread
+google-auth
+streamlit-aggrid
