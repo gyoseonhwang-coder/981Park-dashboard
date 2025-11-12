@@ -396,62 +396,65 @@ for w in wanted:
         col_map[w] = found
 display_cols = [col_map[w] for w in wanted if w in col_map]
 
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, JsCode
+# === 기존 AgGrid 부분 삭제 후 아래 코드로 교체 ===
 
-if not display_cols:
-    st.warning("표시할 컬럼이 발견되지 않습니다. 현재 컬럼: " + ", ".join(available))
-    st.table(df_filtered.head(30))
-else:
-    df_show = df_filtered[display_cols].copy().fillna("")
-    df_show.insert(0, "번호", np.arange(1, len(df_show) + 1))
+# ✅ 표 표시 (st.data_editor 버전)
+st.markdown("""
+<style>
+div[data-testid="stDataFrame"] {
+    border-radius: 12px !important;
+    background: #fff !important;
+    box-shadow: 0 4px 18px rgba(0,0,0,0.05) !important;
+    padding: 10px !important;
+}
+thead tr th {
+    background-color: #f8fafc !important;
+    font-weight: 600 !important;
+    color: #334155 !important;
+    font-size: 13px !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+tbody tr:hover td {
+    background-color: #f1f5f9 !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-    ctrl1, ctrl2, ctrl3 = st.columns([2, 3, 5])
-    with ctrl1:
-        page_size = ctrl1.selectbox("표시 건수(페이지당)", options=[5,10,20,50,100], index=1, key="hist_page_size_select")
-    with ctrl2:
-        search_field = ctrl2.selectbox("검색 필드", options=[c for c in df_show.columns if c not in ("번호",)], index= df_show.columns.get_loc("장애내용") if "장애내용" in df_show.columns else 0, key="hist_search_field")
-    with ctrl3:
-        search_q = ctrl3.text_input("검색", value="", placeholder="검색어 입력 후 Enter", key="hist_search_input")
+# 🔹 표 표시용 데이터 구성
+df_show = df_filtered[display_cols].copy().fillna("")
+df_show.insert(0, "번호", np.arange(1, len(df_show) + 1))
 
-    if search_q and search_q.strip():
-        ql = search_q.strip().lower()
-        df_show = df_show[df_show[search_field].astype(str).str.lower().str.contains(ql, na=False)]
+# 🔹 컬럼 폭/유형 지정
+column_config = {
+    "번호": st.column_config.Column("번호", width="small"),
+    "날짜": st.column_config.Column("날짜", width="small"),
+    "작성자": st.column_config.Column("작성자", width="small"),
+    "위치": st.column_config.Column("위치", width="medium"),
+    "설비명": st.column_config.Column("설비명", width="medium"),
+    "세부장치": st.column_config.Column("세부장치", width="medium"),
+    "장애내용": st.column_config.Column("장애내용", width="large"),
+    "점검자": st.column_config.Column("점검자", width="small"),
+    "완료일자": st.column_config.Column("완료일자", width="small"),
+    "점검내용": st.column_config.Column("점검내용", width="large"),
+}
 
-    gb = GridOptionsBuilder.from_dataframe(df_show)
-    gb.configure_default_column(resizable=True, sortable=True, filter=True, wrapText=True, autoHeight=True)
-    if "번호" in df_show.columns:
-        gb.configure_column("번호", header_name="번호", width=60, lockPosition='left')
-    if "날짜" in df_show.columns:
-        gb.configure_column("날짜", width=160)
-    if "장애내용" in df_show.columns:
-        gb.configure_column("장애내용", width=360, wrapText=True, autoHeight=True)
-    gb.configure_grid_options(domLayout='normal')
-    gb.configure_pagination(paginationAutoPageSize=False, paginationPageSize=int(page_size))
+# 🔹 필터 정보 표시
+st.markdown(
+    f"""
+    <div style='margin-top:10px;margin-bottom:6px;color:#64748b;font-size:14px;'>
+    총 <b>{len(df_filtered)}</b>건 중 <b>{len(df_show)}</b>건 표시됨 
+    {f"(월: {st.session_state['sel_month']})" if st.session_state.get('sel_month') else ''}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-    grid_options = gb.build()
-
-    grid_response = AgGrid(
-        df_show,
-        gridOptions=grid_options,
-        enable_enterprise_modules=False,
-        update_mode=GridUpdateMode.NO_UPDATE,
-        data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
-        fit_columns_on_grid_load=False,
-        theme='alpine',
-        height=720,
-        allow_unsafe_jscode=True,
-        key="ag_grid_history"
-    )
-
-    total_shown = len(df_show)
-    st.markdown(
-        f"<div style='display:flex;justify-content:space-between;align-items:center;margin-top:8px;'>"
-        f"<div class='small-muted'>총 <b>{len(df_filtered)}</b>건 중 <b>{total_shown}</b>건 표시 (필터/검색 적용)</div>"
-        f"<div class='small-muted'>페이지당: <b>{page_size}</b></div>"
-        f"</div>",
-        unsafe_allow_html=True
-    )
-
-    sel = grid_response.get('selected_rows', [])
-    if sel:
-        st.info(f"선택 항목: {len(sel)} 건 — 첫 항목: {sel[0].get('장애내용','(내용없음)')[:120]}")
+# ✅ st.data_editor로 표 출력
+st.data_editor(
+    df_show,
+    hide_index=True,
+    use_container_width=True,
+    height=700,
+    disabled=True,
+    column_config=column_config
+)

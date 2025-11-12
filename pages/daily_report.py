@@ -7,6 +7,8 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 from menu_ui import render_sidebar, get_current_user, AUTHORIZED_USERS
 
+st.set_page_config(page_title="📅 Daily 현황", layout="wide")
+
 st.markdown("""
     <style>
     [data-testid="stSidebarNav"] {display: none !important;}
@@ -20,7 +22,7 @@ if not email or email.strip().lower() not in [e.lower() for e in AUTHORIZED_USER
     st.error("🚫 이 메뉴는 기술지원 전용입니다.")
     st.stop()
 
-st.set_page_config(page_title="📅 Daily 현황", layout="wide")
+
 
 st.markdown("""
 <style>
